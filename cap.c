@@ -108,6 +108,11 @@ int skip_zero_weights=0;    // for original CAP set skip_zero_weights=1
 // See NOTE flag LUNE_GRID_INSTEAD_OF_UV in function sub_inversion.c
 int LUNE_GRID_INSTEAD_OF_UV = 0;    // default = 0 (ie do not run old grid mode)
 
+// Waveform filtering done through libsac.a, apply/desing routines. See src/c code for details
+// zerophase=0: FALSE Single Pass filtering (ORIGINAL DEFAULT)
+// zerophase=1: TRUE Zero phase Two pass filtering (forward + reverse filters)
+int zerophase = 0; 
+
 int main (int argc, char **argv) {
   int 	i,j,k,k1,l,m,nda,npt,plot,kc,nfm,useDisp,dof,tele,indx,gindx,dis[STN],tsurf[STN],search_type,norm;
   int	n1,n2,ns, mltp, nup, up[3], n_shft, nqP, nqS,isurf=0,ibody=0,istat=0,Nsurf=0,Nbody=0,Nstat=0;
@@ -799,7 +804,7 @@ int main (int argc, char **argv) {
                 // filter then cut
                 if(FTC_data == 1) {
                     // filter the whole waveform, then cut and taper it
-                    apply(pObs_ftc,(long int) npt_data, 0,sw_sn,sw_sd,nsects);
+                    apply(pObs_ftc,(long int) npt_data, zerophase,sw_sn,sw_sd,nsects);
                     f_pt = cutTrace(pObs_ftc, npt_data, (int) rint((t0[j]-tb[indx])/dt), npt);
                     taper(f_pt, npt);
                     spt->rec = f_pt; 
@@ -807,7 +812,7 @@ int main (int argc, char **argv) {
                 // cut then filter
                 else {
                     // filter a window of the waveform
-                    apply(f_pt,(long int) npt,0,sw_sn,sw_sd,nsects); 
+                    apply(f_pt,(long int) npt, zerophase, sw_sn,sw_sd,nsects); 
                 }
             }
         }
@@ -817,7 +822,7 @@ int main (int argc, char **argv) {
                 // filter then cut
                 if(FTC_data == 1) {
                     // filter the whole waveform, then cut and taper it
-                    apply(pObs_ftc,(long int) npt_data, 0,pnl_sn,pnl_sd,nsects);
+                    apply(pObs_ftc,(long int) npt_data, zerophase,pnl_sn,pnl_sd,nsects);
                     f_pt = cutTrace(pObs_ftc, npt_data, (int) rint((t0[j]-tb[indx])/dt), npt);
                     taper(f_pt, npt);
                     spt->rec = f_pt; 
@@ -825,7 +830,7 @@ int main (int argc, char **argv) {
                 // cut then filter
                 else {
                     // filter a window of the waveform
-                    apply(f_pt,(long int) npt,0,pnl_sn,pnl_sd,nsects);
+                    apply(f_pt,(long int) npt, zerophase, pnl_sn,pnl_sd,nsects);
                 }
             }
         }
@@ -876,7 +881,7 @@ int main (int argc, char **argv) {
                     // filter then cut
                     if(FTC_green){
                         // filter the whole waveform, then cut and taper it
-                        apply(g_pt,(long int) hd[indx].npts, 0,sw_sn,sw_sd,nsects);
+                        apply(g_pt,(long int) hd[indx].npts, zerophase, sw_sn,sw_sd,nsects);
                         f_pt = cutTrace(g_pt, hd[indx].npts, (int) rint((t0[j]-dtP_pick[i]-shft0[i][j]-hd[indx].b)/dt), npt);
                         taper(f_pt, npt);
                         spt->syn[k] = f_pt;
@@ -884,7 +889,7 @@ int main (int argc, char **argv) {
                     // cut then filter
                     else {
                         // filter a window of the waveform
-                        apply(f_pt,(long int) npt,0,sw_sn,sw_sd,nsects);
+                        apply(f_pt,(long int) npt, zerophase, sw_sn,sw_sd,nsects);
                         taper(f_pt, npt);
                     }
                 }
@@ -897,7 +902,7 @@ int main (int argc, char **argv) {
                     // filter then cut
                     if(FTC_green){
                         // filter the whole waveform, then cut and taper it
-                        apply(g_pt,(long int) hd[indx].npts, 0,pnl_sn,pnl_sd,nsects);
+                        apply(g_pt,(long int) hd[indx].npts, zerophase, pnl_sn,pnl_sd,nsects);
                         f_pt = cutTrace(g_pt, hd[indx].npts, (int) rint((t0[j]-dtP_pick[i]-shft0[i][j]-hd[indx].b)/dt), npt);
                         taper(f_pt, npt);
                         spt->syn[k] = f_pt;
@@ -905,7 +910,7 @@ int main (int argc, char **argv) {
                     // cut then filter
                     else {
                         // filter a window of the waveform
-                        apply(f_pt,(long int) npt,0,pnl_sn,pnl_sd,nsects);
+                        apply(f_pt,(long int) npt, zerophase, pnl_sn,pnl_sd,nsects);
                         taper(f_pt, npt);
                     }
                 }
