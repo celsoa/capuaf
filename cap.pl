@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-
 # if on pacman uncomment the following
 #use v5.10;
 #
@@ -54,7 +53,7 @@ $spis = 45;            # sec per inch, surface waves
 $keep = 0;             # keep synthetics
 
 # filters and window lengths
-($f1_pnl, $f2_pnl, $f1_sw, $f2_sw, $m1, $m2) = (0.02,0.2,0.02,0.1,35,70);
+($f1_pnl, $f2_pnl, $f1_sw, $f2_sw, $tmax_body, $tmax_surf) = (0.02,0.2,0.02,0.1,35,70);
 
 # max. shifts
 $max_shft1=1;		# max. shift for Pnl
@@ -137,8 +136,7 @@ $oldgrid = 0;   # default is oldgrid=0 (ie do not use old grid)
 
 # number of freedom per sample for estimating uncertainty
 $nof = 0.01;
-# seconds per sample of input data
-$dt = 0.02;
+$dt = 0.1;
 
 # rms thresholds for discarding bad traces
 @thrshd = (10., 10., 10., 10., 10.);
@@ -158,14 +156,16 @@ $usage =
   time set at the origin time and epicentral distance and azimuth
   set in the SAC header. There should be another file called $weight
   in the same directory, in the following format:
-	station_name dist w1 w2 w3 w4 w5 tp tp_w ts ts_w ti
+        station_name    dist    w1 w2 w3 w4 w5  tp tp_w ts ts_w ti_r [ti_s]
   where dist specifies the names of Green functions (dist.grn.?) to be used.
   w1 to w5 are the weights for 5 segments of waveforms: PnlZ, PnlR, Z, R, T.
   tp is first P arrival time if it's set to a positive value. tp_w is the body wave window.
-  ts is the arrival time for surface waves. ts_w is the surface wave window. ti is the initial
-  time shift for the surface waves, positive means that the data is delayed w.r.t. the model.
-  If w2 is set to -1, it indicates that the station is at teleseimic distances and only
-  the P (PnlZ) and SH (T) are used. In this case, ts is the S arrival time when it is positive.
+  ts is the arrival time for surface waves. 
+  ts_w is the surface wave window. 
+  ti_r and ti_s are the initial time shift for the surface waves (rayleigh, love). 
+  Positive shift means that the data is delayed w.r.t. the model.
+  If w2 is set to -1, it indicates that the station is at teleseismic distances and only the P (PnlZ) and SH (T) are used.
+  In this case, ts is the S arrival time when it is positive.
 
   The Greens function library:
      The Greens functions are computed using FK, named as xxx.grn.[0-8] where
@@ -183,13 +183,17 @@ $usage =
     Otherwise,
     2) If positive apparent velocities are given to the code (see -V below), it will use
        them to calculate the time windows:
-	  t1 = dist/vp - 0.3*m1, t2 = ts + 0.2*m1
-	  t3 = dist/vLove - 0.3*m2, t4 = dist/vRayleigh + 0.7*m2
+       t1 = dist/vp        - 0.3*tmax_body, 
+       t2 = ts             + 0.2*tmax_body
+       t3 = dist/vLove     - 0.3*tmax_surf, 
+       t4 = dist/vRayleigh + 0.7*tmax_surf
     Otherwise,
     3) Using the tp, ts in the Green function header
- 	  t1 = tp - 0.2*m1,  t2 = t1+m1
-	  t3 = ts - 0.3*m2,  t4 = t3+m2
-    Here m1, m2 are the maximum lengths for the Pnl and surface waves windows
+ 	  t1 = tp   - 0.2*tmax_body,  
+      t2 = t1   +     tmax_body
+	  t3 = ts   - 0.3*tmax_surf,  
+      t4 = t3   +     tmax_surf
+    Here tmax_body, tmax_surf are the maximum lengths for the Pnl and surface waves windows
     (see the -T options below).
 
 =====================================================================================================
@@ -200,7 +204,7 @@ $usage =
                   [-M$model_$dep] [-m$mw OR -m<mw1>/<mw2>/<dmw> ] [-N<n>]
                   [-O] [-P[<Yscale[/Xscale_b[/Xscale_s[/k]]]]>] [-Qnof]
                   [-R<v0/w0/strike0/dip0/rake0> OR -R<v1/v2/w1/w1/strike1/strike2/dip1/dip2/rake1/rake2>] 
-                  [-S<s1/s2[/tie]>] [-T<m1/m2>]
+                  [-S<s1/s2[/tie]>] [-T<tmax_body/tmax_surf>]
                   [-Udirct] [-V<vp/vl/vr>] [-Wi] [-Y<norm>] [-Zstring] event_dirs
 
     -A  run cap for different depths. (dep_min/dep_max/dep_inc).
@@ -222,7 +226,7 @@ $usage =
         header.
         threshold should be NEGATIVE if polarities are allowed to conflict expected polarity (as mentioned in weight file).
     -G  Green's function library location ($green).
-    -H  dt ($dt). Sampling interval (seconds per sample). This should match the sampling interval of the input SAC files!
+    -H  dt ($dt).
     -I  specify number of solutions (random mode) OR number of points per parameter.
         RAND: -I<nsol>  e.g. -I10000  --- will generate 10,000 random solutions.
         GRID: -I<Nv>/<Nw>/<Nstrike>/<Ndip>/<Nrake> where Nx = number of poits for parameter x
@@ -254,13 +258,17 @@ $usage =
         tie between SH shift and SV shift:
         tie=0 		shift SV and SH independently,
         tie=0.5 	force the same shift for SH and SV ($tie).
-    -T	max. time window lengths for Pnl and surface waves ($m1/$m2).
+    -T	max. time window lengths for Pnl and surface waves ($tmax_body/$tmax_surf).
     -U  directivity, specify rupture direction on the fault plane (off).
     -V	apparent velocities for Pnl, Love, and Rayleigh waves (off).
     -W  Integration.
         W0 => Do not integrate. Uses data in its original form
         W1 => (default) Integrate
-    -X  weight for normalized polarity misfit [0,1). This is combined with the waveform misfit. Don't use -X1 since there could be multiple solutions that could fit the observed polarity, use -X.99 instead in order to include atleast some waveform measure. Suggested value = 0.5 (Bug: Crashes when using -X flag and no polarity is available in the weight file)
+    -X  weight for normalized polarity misfit [0,1). This is combined with the waveform misfit.
+        Recommended value: X0.5 (Bug: Crashes when using -X flag and no polarity is available in the weight file)
+        Not recommended: X1. This allows multiple solutions that could fit the observed polarities.
+        use -X.99 instead in order to include at least some waveform measure and find a single best solution.
+
     -Y  specify norm (1 - L1 norm; 2 - L2 norm)
     -Z  specify a different weight file name ($weight).
 
@@ -272,26 +280,26 @@ Description:   Station_Name    Distance   PV_weight   PR_weight    SV_weight   S
 Convention: Postive time-shift means synthetics is arriving earlier (faster velocity model) and it needs to be shifted in the positive direction in order to match it with the data.
 
 =====================================================================================================
-Examples:
-RANDOM SEARCH
-Double Couple:
-> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1 -R0/0 -Y1 -I100000 20080418093700
-FMT search:
-> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1 -R0/0 -Y1 -I100000 20080418093700
-
-GRID SEARCH
-Double Couple:
-> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1 -R0/0 -Y1 -I1/1/37/10/19 20080418093700
-FMT search:
-> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1 -Y1 -I10/10/37/10/19 20080418093700
-
-The commands abouve find the best focal mechanism and moment magnitude of the
+EXAMPLE COMMANDS
+The following commands find the best focal mechanism and moment magnitude for the 
 2008/4/18 Southern Illinois earthquake 20080418093700 using the central US
 crustal velocity model cus with the earthquake at a depth of 15 km.
-Here we assume that the Greens functions have already been computed and saved
+The examples assume that the Greens functions have already been computed and saved
 in $green/cus/cus_15/.
 
-DEPTH SEARCH
+EXAMPLE: RANDOM SEARCH
+Double Couple:
+> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1 -R0/0 -Y1 -I100000 20080418093700
+Full Moment Tensor:
+> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1       -Y1 -I100000 20080418093700
+
+EXAMPLE: GRID SEARCH
+Double Couple:
+> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1 -R0/0 -Y1 -I1/1/37/10/19 20080418093700
+Full Moment Tensor:
+> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1       -Y1 -I10/10/37/10/19 20080418093700
+
+EXAMPLE: DEPTH SEARCH
 To find the best focal depth, repeat the inversion for different focal depths
 either by using a for-loop or the '-A' flag
 # for loop with depths 5 to 30 km at 5-km intervals
@@ -299,24 +307,28 @@ either by using a for-loop or the '-A' flag
 # same as above but using the A flag in the format -Astart/end/incr
 > cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1 -R0/0 -Y1 -I1/1/37/10/19 20080418093700 -A5/30/5
 
-# to plot the depth test
+EXAMPLE: PLOT THE DEPTH SEARCH RESULTS
 > depth_test 20080418093700 cus
 > gv dep_20080418093700.ps
--------------------------------------------------------------------------------------
-[Header Info] 
-The inversion results are saved in cus_15.out
+
+EXAMPLE RESULTS:
+CAP OUTPUT FILE AND HEADER INFO
+The inversion results are saved in cus_15.out, which has the following headers:
 Event 20080418093700 Model cus_015 FM  297 86.815262    0 Mw 5.20 rms 4.547e-05   112 ERR   0   0   0 CLVD -1.89 -nan ISO  10.212961 0.00 VR 80.3 data2 1.026e-04
 # Hypocenter_sac_header elat 3.845000e+01 elon -8.789000e+01 edep 1.160000e+01
 # tensor = 7.943e+23  0.9511 -0.5865 -0.0273 -0.6243  0.0474  0.1075
 # norm L1    # Pwin 35 Swin 70    # N 8 Np 16 Ns 24
 
-saying that the fault plane solution is strike 297, dip 87, rake 0, gamma (CLVD) -2, and delta (ISO) 10 degrees.
-Also provided are misfit (rms), data norm (Data2) and Variance reduction (VR), and hypocenter location
-tensor in Mxx Mxy Mxz Myy Myz Mzz (where x=North, y=East, z=Down).
-norm info (L1 or L2); Duration of P (Pwin) and S windows; Number of stations (N); Number of P components (Np) and Number of S components (Ns)
-  The rest of the files shows rms, cross-correlation coef., and time shift of individual waveforms.
-  The waveform fits are plotted in file cus_15.ps in the event directory.
-------------------------------------------------------------------------------------------------------
+Here, FM if the focal mechanism with strike 297, dip 87, rake 0.
+The values gamma (CLVD) -2, delta (ISO) 10 (degrees) are lune coordinates (if resolving a full moment tensor).
+Also provided are misfit (rms), data norm (Data2) and Variance reduction (VR), and hypocenter location.
+Moment tensor format: Mxx Mxy Mxz Myy Myz Mzz (where x=North, y=East, z=Down).
+Norm info (L1 or L2); Duration of P (Pwin) and S windows; Number of stations (N); Number of P components (Np) and Number of S components (Ns).
+The rest of the files shows rms, cross-correlation coef., and time shift of individual waveforms.
+
+CAP OUTPUT FIGURES
+For the examples above, the waveform fits are plotted in the event directory, in file cus_15.ps (double-couple) or cus_15_fmt.ps (full moment tensor).
+=====================================================================================================
 
 ";
 
@@ -459,7 +471,7 @@ foreach (grep(/^-/,@ARGV)) {
      ($max_shft1, $max_shft2) = @value;
      $tie = $value[2] if $#value > 1;
    } elsif ($opt eq "T") {
-     ($m1, $m2) = @value;
+     ($tmax_body, $tmax_surf) = @value;
    } elsif ($opt eq "U") {
      ($rupDir) = @value;
      $pVel = 6.4;
@@ -827,7 +839,7 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
         open(SRC, "| $cmd") || die "can not run $cmd\n";
         print SRC "$pVel $sVel $riseTime $dura $rupDir\n",$riseTime if $dirct eq "_dir";
         print SRC "$model $dep\n";          # first input in regular cap run
-        print SRC "$m1 $m2 $max_shft1 $max_shft2 $repeat $fm_thr $tie $Sstatic_shift\n";
+        print SRC "$tmax_body $tmax_surf $max_shft1 $max_shft2 $repeat $fm_thr $tie $Sstatic_shift\n";
         print SRC "@thrshd\n" if $repeat;   # no value in regular cap run
         print SRC "$vp $love $rayleigh\n";  # vp, vs1, vs2 (in cap.c)
         print SRC "$power_of_body $power_of_surf $nof\n";
@@ -849,6 +861,7 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
         printf SRC "%d\n",$#wwf + 1;
         print SRC @wwf;
         close(SRC);
+        print STDERR ">> cap.pl: end grid search.\n";
 
         #-----save a copy of inpur command and weight file in the OUTPUT_DIR
         system("cp", $input_weight_file, './OUTPUT_DIR/weight.dat');
@@ -857,20 +870,22 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
 
         plot:
         if ( $plot > 0 && ($? >> 8) == 0 ) {
-            print STDERR "\n\ncap.pl: plot results ... \n";
+            print STDERR "----------------------------------\n";
+            print STDERR ">> cap.pl: plot results ... \n";
             $odir = "./OUTPUT_DIR";
             chdir($odir);
             @dum = split('_', $md_dep);  # split mdl string
             $outfile = sprintf("%s_%s_%03d.out", @event, $model, int($dep));
             open(my $out,'>>',$outfile);
-            say $out "INPUT_PAR $md_dep P_win $m1 S_win $m2 P $amplify_P p $amplify_S NCOM $ncom spiB $spib spiS $spis $filterBand FMT $fmt_flag";
+            say $out "INPUT_PAR $md_dep P_win $tmax_body S_win $tmax_surf P $amplify_P p $amplify_S NCOM $ncom spiB $spib spiS $spis $filterBand FMT $fmt_flag";
+            print STDERR ">> cap.pl: spis $spis S_win $tmax_surf \n";
 
-            &plot($md_dep, $m1, $m2, $amplify_P, $amplify_S, $ncom, $spib, $spis, $filterBand, $fmt_flag, @event, $model, $dep, $dura, $riseTime, $pol_wt);
+            &plot($md_dep, $tmax_body, $tmax_surf, $amplify_P, $amplify_S, $ncom, $spib, $spis, $filterBand, $fmt_flag, @event, $model, $dep, $dura, $riseTime, $pol_wt);
             unlink(<${md_dep}_*.?>) unless $keep;
             chdir("../");
-            print STDERR "cap.pl: plotting finished.\n";
+            print STDERR ">> cap.pl: plotting finished.\n";
         } else {
-            print STDERR "cap.pl: no plots generated.\n";
+            print STDERR ">> cap.pl: no plots generated.\n";
         }
     }
 }
