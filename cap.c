@@ -547,14 +547,22 @@ int main (int argc, char **argv) {
 
     // Loop over greens function (NGR = 10)
     for(j=0;j<NGR;j++) {
-      *c_pt = grn_com[j];
-      indx = 0; if (j>1) indx = 1; if (j>=kk[2]) indx=2;
-      if ((green[j] = read_sac(tmp,&hd[indx])) == NULL) return -1;
-      conv(src, ns, green[j], hd[indx].npts);
-      if (tele) {
-	if (tstarP>0. && j>=kk[2]) conv(attnP, nqP, green[j], hd[indx].npts);
-	if (tstarS>0. && j< kk[2]) conv(attnS, nqS, green[j], hd[indx].npts);
-      }
+        *c_pt = grn_com[j];
+        indx = 0; 
+        if (j>1) {
+            indx = 1; 
+        }
+        if (j>=kk[2]) {
+            indx=2;
+        }
+        if ((green[j] = read_sac(tmp,&hd[indx])) == NULL) {
+            return -1;
+        }
+        conv(src, ns, green[j], hd[indx].npts);
+        if (tele) {
+            if (tstarP>0. && j>=kk[2]) conv(attnP, nqP, green[j], hd[indx].npts);
+            if (tstarS>0. && j< kk[2]) conv(attnS, nqS, green[j], hd[indx].npts);
+        }
     }
     if (!tele) {hd[0].t2 = hd[2].t2; hd[0].user2 = hd[2].user2;}
 
@@ -1045,8 +1053,8 @@ int main (int argc, char **argv) {
   // mtensor saved in output file should be in M00, M11, M22, M01, M02, M12 order. FIX HERE and then perhaps also in the cap_plt! (FUTURE WORK)
   fprintf(f_out,"# tensor = %8.3e %7.4f %7.4f %7.4f %7.4f %7.4f %7.4f\n",
           amp*1.0e20,
-          mtensor[0][0],mtensor[0][1],mtensor[0][2],
-	  mtensor[1][1],mtensor[1][2], mtensor[2][2]);
+          mtensor[0][0], mtensor[0][1], mtensor[0][2],
+    	  mtensor[1][1], mtensor[1][2], mtensor[2][2]);
   fprintf(f_out,"# norm L%d    # Pwin %g Swin %g    # N %d Np %d Ns %d\n",
           norm,                 // misfit norm
           win_len_Nsamp[0]*dt, win_len_Nsamp[1]*dt,   // Pwin, Swin
@@ -1054,39 +1062,39 @@ int main (int argc, char **argv) {
 
 for(obs=obs0,i=0;i<nda;i++,obs++) {
     for(j=0;j<NCP;j++) {
-      k = NCP - 1 - j;
-      /* k = 0 (j = 4) Surf T 
-	 k = 1 (j = 3) Surf V 
-	 k = 2 (j = 2) Surf R 
-	 k = 3 (j = 1) P R 
-	 k = 4 (j = 0) P V*/ 
-      // time-shift (KEY!)
-      //sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
-      //stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];             // time-shift of the component
+        k = NCP - 1 - j;
+        /* k = 0 (j = 4) Surf T 
+           k = 1 (j = 3) Surf V 
+           k = 2 (j = 2) Surf R 
+           k = 3 (j = 1) P R 
+           k = 4 (j = 0) P V*/ 
+        // time-shift (KEY!)
+        //sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
+        //stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];             // time-shift of the component
 
-      // SEE google doc for the impacts of each option
-      /*
-      if (0) { // OLD
-	sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
-	stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];}
-      if (0) { // NEW 1.0 
-	sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2 + rint(dtP_pick[i]/dt);
-	stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];
-      }
-      if (0) { // NEW 2.0
-	if (k<3) sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2 + rint(dtP_pick[i]/dt); // surface waves
-	else sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;                            // body waves
-	stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];} 
-      */
-      //if (1) { // NEW 3.0 
-	       // This is not same as NEW 1.0
-	       // The origin time of synthetics is different in that case (windows are offset in NEW 1.0) 
-	sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
-	stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k] + dtP_pick[i];
-      //}
-      stn_comp_misfit[i][k] = sol.error[i][k]*100/(Ncomp*sol.wferr*data2);   // percentage of total misfit
-      stn_comp_CC[i][k] = sol.cfg[i][k];                                     // data-synthetic cross-correlation
-      if (stn_comp_CC[i][k]<0) stn_comp_CC[i][k] = 0;
+        // SEE google doc for the impacts of each option
+        /*
+           if (0) { // OLD
+           sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
+           stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];}
+           if (0) { // NEW 1.0 
+           sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2 + rint(dtP_pick[i]/dt);
+           stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];
+           }
+           if (0) { // NEW 2.0
+           if (k<3) sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2 + rint(dtP_pick[i]/dt); // surface waves
+           else sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;                            // body waves
+           stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];} 
+           */
+        //if (1) { // NEW 3.0 
+        // This is not same as NEW 1.0
+        // The origin time of synthetics is different in that case (windows are offset in NEW 1.0) 
+        sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
+        stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k] + dtP_pick[i];
+        //}
+        stn_comp_misfit[i][k] = sol.error[i][k]*100/(Ncomp*sol.wferr*data2);   // percentage of total misfit
+        stn_comp_CC[i][k] = sol.cfg[i][k];                                     // data-synthetic cross-correlation
+        if (stn_comp_CC[i][k]<0) stn_comp_CC[i][k] = 0;
     }
  }
 
