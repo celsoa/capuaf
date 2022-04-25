@@ -84,7 +84,7 @@
 ****************************************************************/
 #include "cap.h"
 
-int total_n,loop=0,start=0,debug=0, Ncomp=0,Psamp[STN],Ssamp[STN],edep=-999;
+int total_n,loop=0,start=0,debug=0, Ncomp=0,Psamp[NSTA],Ssamp[NSTA],edep=-999;
 float data2=0.0;
 
 /* flags for computing uncertainty on the lune. 1==apply */
@@ -114,37 +114,37 @@ int LUNE_GRID_INSTEAD_OF_UV = 0;    // default = 0 (ie do not run old grid mode)
 int zerophase = 0; 
 
 int main (int argc, char **argv) {
-  int 	i,j,k,k1,l,m,nda,npt,plot,kc,nfm,useDisp,dof,tele,indx,gindx,dis[STN],tsurf[STN],search_type,norm;
+  int 	i,j,k,k1,l,m,nda,npt,plot,kc,nfm,useDisp,dof,tele,indx,gindx,dis[NSTA],tsurf[NSTA],search_type,norm;
   int	n1,n2,ns, mltp, nup, up[3], n_shft, nqP, nqS,isurf=0,ibody=0,istat=0,Nsurf=0,Nbody=0,Nstat=0;
   int	win_len_Nsamp[2],n[NCP],max_shft[NCP],npts[NRC],stn_comp_CC[200][NCP];
   int	repeat;
   char	tmp[255],glib[128],dep[32],dst[16],eve[32],*c_pt;
   float	x,x1,x2,y,y1,amp,dt,rad[6],arad[4][3],fm_thr,tie,mtensor[3][3],rec2=0.,VR,evla,evlo,evdp;
-  float Pshift_max, Sshift_max,  Sshift_static[STN];
+  float Pshift_max, Sshift_max,  Sshift_static[NSTA];
   float	rms_cut[NCP], t0[NCP], tb[NRC], t1, t2, t3, t4, srcDelay;
-  float	dtP_pick[STN];
+  float	dtP_pick[NSTA];
   float tshift_static_body = 0;         //
   float tshift_static_surf_rayl;        // weight file col 12
   float tshift_static_surf_love;        // weight file col 13
   float tshift_static_surf_rayl_input;  // command line input
-  float shft0[STN][NCP];                //
+  float shft0[NSTA][NCP];                //
   float Pnl_win;                        //
   float ts;                             // Surface arrival time
   float surf_win;                       //
-  float P_pick[STN];                    //
-  float P_win[STN];                     //
-  float S_pick[STN];                    //
-  float S_win[STN];                     //
-  float S_shft[STN];                    //
+  float P_pick[NSTA];                    //
+  float P_win[NSTA];                     //
+  float S_pick[NSTA];                    //
+  float S_win[NSTA];                     //
+  float S_shft[NSTA];                    //
   float fraction_before_P = 0.4;        // seconds?
   float fraction_before_S = 0.3;        // seconds?
-  float stn_comp_log_amp[200][NCP];
-  float stn_comp_misfit[200][NCP];
-  float stn_comp_shift[200][NCP];
-  float max_amp_syn[200][NCP]; 
-  float max_amp_obs[200][NCP]; 
+  float stn_comp_log_amp[NSTA][NCP];
+  float stn_comp_misfit[NSTA][NCP];
+  float stn_comp_shift[NSTA][NCP];
+  float max_amp_syn[NSTA][NCP]; 
+  float max_amp_obs[NSTA][NCP]; 
   float log_amp_thresh;
-  float ppick[200];
+  float ppick[NSTA];
   float	wt_pnl,wt_rayleigh,wt_love;
   float	tstarP, tstarS, attnP[NFFT], attnS[NFFT];
   float *data[NRC], *green[NGR];
@@ -166,7 +166,7 @@ int main (int argc, char **argv) {
   FM *fm_copy;  /*  copy of all first motions entered in weight file */
   int nwaveforms=0; // print progress in reading seismograms
 
-  // dtP_pick[STN] was con_shft[STN] earlier
+  // dtP_pick[NSTA] was con_shft[NSTA] earlier
 
   //fprintf(stderr,"\n----------------------------------------------------------\n");
   fprintf(stderr,"\n==============================\n"); 
@@ -390,9 +390,9 @@ int main (int argc, char **argv) {
   //sw_reward = 1;
   fprintf(stderr, "Pnl reward: %f ; Sw reward: %f \n",pnl_reward, sw_reward);
 
-  if (nda > STN) {
+  if (nda > NSTA) {
     fprintf(stderr,"number of station, %d, exceeds max., some stations are discarded\n",nda);
-    nda = STN;
+    nda = NSTA;
   }
   obs = obs0 = (DATA *) malloc(nda*sizeof(DATA));
   fm = fm0 = (FM *) malloc(3*nda*sizeof(FM));

@@ -24,7 +24,7 @@
 
 /***********************Constants********************************/
 
-#define STN	200		/* up to STN stations */
+#define NSTA 1500   // max number of stations to read (landslides have dense coverage nsta~400). Original: 200. Original varname: STN
 
 #define NRC	3		/* 3 components of records */
 static char cm[NRC]={'t','r','z'};
