@@ -84,7 +84,7 @@
 ****************************************************************/
 #include "cap.h"
 
-int total_n,loop=0,start=0,debug=0, Ncomp=0,Psamp[STN],Ssamp[STN],edep=-999;
+int total_n,loop=0,start=0,debug=0, Ncomp=0,Psamp[NSTA],Ssamp[NSTA],edep=-999;
 float data2=0.0;
 
 /* flags for computing uncertainty on the lune. 1==apply */
@@ -108,38 +108,43 @@ int skip_zero_weights=0;    // for original CAP set skip_zero_weights=1
 // See NOTE flag LUNE_GRID_INSTEAD_OF_UV in function sub_inversion.c
 int LUNE_GRID_INSTEAD_OF_UV = 0;    // default = 0 (ie do not run old grid mode)
 
+// Waveform filtering done through libsac.a, apply/desing routines. See src/c code for details
+// zerophase=0: FALSE Single Pass filtering (ORIGINAL DEFAULT)
+// zerophase=1: TRUE Zero phase Two pass filtering (forward + reverse filters)
+int zerophase = 0; 
+
 int main (int argc, char **argv) {
-  int 	i,j,k,k1,l,m,nda,npt,plot,kc,nfm,useDisp,dof,tele,indx,gindx,dis[STN],tsurf[STN],search_type,norm;
+  int 	i,j,k,k1,l,m,nda,npt,plot,kc,nfm,useDisp,dof,tele,indx,gindx,dis[NSTA],tsurf[NSTA],search_type,norm;
   int	n1,n2,ns, mltp, nup, up[3], n_shft, nqP, nqS,isurf=0,ibody=0,istat=0,Nsurf=0,Nbody=0,Nstat=0;
   int	win_len_Nsamp[2],n[NCP],max_shft[NCP],npts[NRC],stn_comp_CC[200][NCP];
   int	repeat;
   char	tmp[255],glib[128],dep[32],dst[16],eve[32],*c_pt;
   float	x,x1,x2,y,y1,amp,dt,rad[6],arad[4][3],fm_thr,tie,mtensor[3][3],rec2=0.,VR,evla,evlo,evdp;
-  float Pshift_max, Sshift_max,  Sshift_static[STN];
+  float Pshift_max, Sshift_max,  Sshift_static[NSTA];
   float	rms_cut[NCP], t0[NCP], tb[NRC], t1, t2, t3, t4, srcDelay;
-  float	dtP_pick[STN];
+  float	dtP_pick[NSTA];
   float tshift_static_body = 0;         //
   float tshift_static_surf_rayl;        // weight file col 12
   float tshift_static_surf_love;        // weight file col 13
   float tshift_static_surf_rayl_input;  // command line input
-  float shft0[STN][NCP];                //
+  float shft0[NSTA][NCP];                //
   float Pnl_win;                        //
   float ts;                             // Surface arrival time
   float surf_win;                       //
-  float P_pick[STN];                    //
-  float P_win[STN];                     //
-  float S_pick[STN];                    //
-  float S_win[STN];                     //
-  float S_shft[STN];                    //
+  float P_pick[NSTA];                    //
+  float P_win[NSTA];                     //
+  float S_pick[NSTA];                    //
+  float S_win[NSTA];                     //
+  float S_shft[NSTA];                    //
   float fraction_before_P = 0.4;        // seconds?
   float fraction_before_S = 0.3;        // seconds?
-  float stn_comp_log_amp[200][NCP];
-  float stn_comp_misfit[200][NCP];
-  float stn_comp_shift[200][NCP];
-  float max_amp_syn[200][NCP]; 
-  float max_amp_obs[200][NCP]; 
+  float stn_comp_log_amp[NSTA][NCP];
+  float stn_comp_misfit[NSTA][NCP];
+  float stn_comp_shift[NSTA][NCP];
+  float max_amp_syn[NSTA][NCP]; 
+  float max_amp_obs[NSTA][NCP]; 
   float log_amp_thresh;
-  float ppick[200];
+  float ppick[NSTA];
   float	wt_pnl,wt_rayleigh,wt_love;
   float	tstarP, tstarS, attnP[NFFT], attnS[NFFT];
   float *data[NRC], *green[NGR];
@@ -161,7 +166,7 @@ int main (int argc, char **argv) {
   FM *fm_copy;  /*  copy of all first motions entered in weight file */
   int nwaveforms=0; // print progress in reading seismograms
 
-  // dtP_pick[STN] was con_shft[STN] earlier
+  // dtP_pick[NSTA] was con_shft[NSTA] earlier
 
   //fprintf(stderr,"\n----------------------------------------------------------\n");
   fprintf(stderr,"\n==============================\n"); 
@@ -385,9 +390,9 @@ int main (int argc, char **argv) {
   //sw_reward = 1;
   fprintf(stderr, "Pnl reward: %f ; Sw reward: %f \n",pnl_reward, sw_reward);
 
-  if (nda > STN) {
+  if (nda > NSTA) {
     fprintf(stderr,"number of station, %d, exceeds max., some stations are discarded\n",nda);
-    nda = STN;
+    nda = NSTA;
   }
   obs = obs0 = (DATA *) malloc(nda*sizeof(DATA));
   fm = fm0 = (FM *) malloc(3*nda*sizeof(FM));
@@ -542,14 +547,22 @@ int main (int argc, char **argv) {
 
     // Loop over greens function (NGR = 10)
     for(j=0;j<NGR;j++) {
-      *c_pt = grn_com[j];
-      indx = 0; if (j>1) indx = 1; if (j>=kk[2]) indx=2;
-      if ((green[j] = read_sac(tmp,&hd[indx])) == NULL) return -1;
-      conv(src, ns, green[j], hd[indx].npts);
-      if (tele) {
-	if (tstarP>0. && j>=kk[2]) conv(attnP, nqP, green[j], hd[indx].npts);
-	if (tstarS>0. && j< kk[2]) conv(attnS, nqS, green[j], hd[indx].npts);
-      }
+        *c_pt = grn_com[j];
+        indx = 0; 
+        if (j>1) {
+            indx = 1; 
+        }
+        if (j>=kk[2]) {
+            indx=2;
+        }
+        if ((green[j] = read_sac(tmp,&hd[indx])) == NULL) {
+            return -1;
+        }
+        conv(src, ns, green[j], hd[indx].npts);
+        if (tele) {
+            if (tstarP>0. && j>=kk[2]) conv(attnP, nqP, green[j], hd[indx].npts);
+            if (tstarS>0. && j< kk[2]) conv(attnS, nqS, green[j], hd[indx].npts);
+        }
     }
     if (!tele) {hd[0].t2 = hd[2].t2; hd[0].user2 = hd[2].user2;}
 
@@ -799,7 +812,7 @@ int main (int argc, char **argv) {
                 // filter then cut
                 if(FTC_data == 1) {
                     // filter the whole waveform, then cut and taper it
-                    apply(pObs_ftc,(long int) npt_data, 0,sw_sn,sw_sd,nsects);
+                    apply(pObs_ftc,(long int) npt_data, zerophase,sw_sn,sw_sd,nsects);
                     f_pt = cutTrace(pObs_ftc, npt_data, (int) rint((t0[j]-tb[indx])/dt), npt);
                     taper(f_pt, npt);
                     spt->rec = f_pt; 
@@ -807,7 +820,7 @@ int main (int argc, char **argv) {
                 // cut then filter
                 else {
                     // filter a window of the waveform
-                    apply(f_pt,(long int) npt,0,sw_sn,sw_sd,nsects); 
+                    apply(f_pt,(long int) npt, zerophase, sw_sn,sw_sd,nsects); 
                 }
             }
         }
@@ -817,7 +830,7 @@ int main (int argc, char **argv) {
                 // filter then cut
                 if(FTC_data == 1) {
                     // filter the whole waveform, then cut and taper it
-                    apply(pObs_ftc,(long int) npt_data, 0,pnl_sn,pnl_sd,nsects);
+                    apply(pObs_ftc,(long int) npt_data, zerophase,pnl_sn,pnl_sd,nsects);
                     f_pt = cutTrace(pObs_ftc, npt_data, (int) rint((t0[j]-tb[indx])/dt), npt);
                     taper(f_pt, npt);
                     spt->rec = f_pt; 
@@ -825,7 +838,7 @@ int main (int argc, char **argv) {
                 // cut then filter
                 else {
                     // filter a window of the waveform
-                    apply(f_pt,(long int) npt,0,pnl_sn,pnl_sd,nsects);
+                    apply(f_pt,(long int) npt, zerophase, pnl_sn,pnl_sd,nsects);
                 }
             }
         }
@@ -876,7 +889,7 @@ int main (int argc, char **argv) {
                     // filter then cut
                     if(FTC_green){
                         // filter the whole waveform, then cut and taper it
-                        apply(g_pt,(long int) hd[indx].npts, 0,sw_sn,sw_sd,nsects);
+                        apply(g_pt,(long int) hd[indx].npts, zerophase, sw_sn,sw_sd,nsects);
                         f_pt = cutTrace(g_pt, hd[indx].npts, (int) rint((t0[j]-dtP_pick[i]-shft0[i][j]-hd[indx].b)/dt), npt);
                         taper(f_pt, npt);
                         spt->syn[k] = f_pt;
@@ -884,7 +897,7 @@ int main (int argc, char **argv) {
                     // cut then filter
                     else {
                         // filter a window of the waveform
-                        apply(f_pt,(long int) npt,0,sw_sn,sw_sd,nsects);
+                        apply(f_pt,(long int) npt, zerophase, sw_sn,sw_sd,nsects);
                         taper(f_pt, npt);
                     }
                 }
@@ -897,7 +910,7 @@ int main (int argc, char **argv) {
                     // filter then cut
                     if(FTC_green){
                         // filter the whole waveform, then cut and taper it
-                        apply(g_pt,(long int) hd[indx].npts, 0,pnl_sn,pnl_sd,nsects);
+                        apply(g_pt,(long int) hd[indx].npts, zerophase, pnl_sn,pnl_sd,nsects);
                         f_pt = cutTrace(g_pt, hd[indx].npts, (int) rint((t0[j]-dtP_pick[i]-shft0[i][j]-hd[indx].b)/dt), npt);
                         taper(f_pt, npt);
                         spt->syn[k] = f_pt;
@@ -905,7 +918,7 @@ int main (int argc, char **argv) {
                     // cut then filter
                     else {
                         // filter a window of the waveform
-                        apply(f_pt,(long int) npt,0,pnl_sn,pnl_sd,nsects);
+                        apply(f_pt,(long int) npt, zerophase, pnl_sn,pnl_sd,nsects);
                         taper(f_pt, npt);
                     }
                 }
@@ -1040,8 +1053,8 @@ int main (int argc, char **argv) {
   // mtensor saved in output file should be in M00, M11, M22, M01, M02, M12 order. FIX HERE and then perhaps also in the cap_plt! (FUTURE WORK)
   fprintf(f_out,"# tensor = %8.3e %7.4f %7.4f %7.4f %7.4f %7.4f %7.4f\n",
           amp*1.0e20,
-          mtensor[0][0],mtensor[0][1],mtensor[0][2],
-	  mtensor[1][1],mtensor[1][2], mtensor[2][2]);
+          mtensor[0][0], mtensor[0][1], mtensor[0][2],
+    	  mtensor[1][1], mtensor[1][2], mtensor[2][2]);
   fprintf(f_out,"# norm L%d    # Pwin %g Swin %g    # N %d Np %d Ns %d\n",
           norm,                 // misfit norm
           win_len_Nsamp[0]*dt, win_len_Nsamp[1]*dt,   // Pwin, Swin
@@ -1049,39 +1062,39 @@ int main (int argc, char **argv) {
 
 for(obs=obs0,i=0;i<nda;i++,obs++) {
     for(j=0;j<NCP;j++) {
-      k = NCP - 1 - j;
-      /* k = 0 (j = 4) Surf T 
-	 k = 1 (j = 3) Surf V 
-	 k = 2 (j = 2) Surf R 
-	 k = 3 (j = 1) P R 
-	 k = 4 (j = 0) P V*/ 
-      // time-shift (KEY!)
-      //sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
-      //stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];             // time-shift of the component
+        k = NCP - 1 - j;
+        /* k = 0 (j = 4) Surf T 
+           k = 1 (j = 3) Surf V 
+           k = 2 (j = 2) Surf R 
+           k = 3 (j = 1) P R 
+           k = 4 (j = 0) P V*/ 
+        // time-shift (KEY!)
+        //sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
+        //stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];             // time-shift of the component
 
-      // SEE google doc for the impacts of each option
-      /*
-      if (0) { // OLD
-	sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
-	stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];}
-      if (0) { // NEW 1.0 
-	sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2 + rint(dtP_pick[i]/dt);
-	stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];
-      }
-      if (0) { // NEW 2.0
-	if (k<3) sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2 + rint(dtP_pick[i]/dt); // surface waves
-	else sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;                            // body waves
-	stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];} 
-      */
-      //if (1) { // NEW 3.0 
-	       // This is not same as NEW 1.0
-	       // The origin time of synthetics is different in that case (windows are offset in NEW 1.0) 
-	sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
-	stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k] + dtP_pick[i];
-      //}
-      stn_comp_misfit[i][k] = sol.error[i][k]*100/(Ncomp*sol.wferr*data2);   // percentage of total misfit
-      stn_comp_CC[i][k] = sol.cfg[i][k];                                     // data-synthetic cross-correlation
-      if (stn_comp_CC[i][k]<0) stn_comp_CC[i][k] = 0;
+        // SEE google doc for the impacts of each option
+        /*
+           if (0) { // OLD
+           sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
+           stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];}
+           if (0) { // NEW 1.0 
+           sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2 + rint(dtP_pick[i]/dt);
+           stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];
+           }
+           if (0) { // NEW 2.0
+           if (k<3) sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2 + rint(dtP_pick[i]/dt); // surface waves
+           else sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;                            // body waves
+           stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k];} 
+           */
+        //if (1) { // NEW 3.0 
+        // This is not same as NEW 1.0
+        // The origin time of synthetics is different in that case (windows are offset in NEW 1.0) 
+        sol.shft[i][k] = sol.shft[i][k] - max_shft[k]/2;
+        stn_comp_shift[i][k] =  shft0[i][k] + dt * sol.shft[i][k] + dtP_pick[i];
+        //}
+        stn_comp_misfit[i][k] = sol.error[i][k]*100/(Ncomp*sol.wferr*data2);   // percentage of total misfit
+        stn_comp_CC[i][k] = sol.cfg[i][k];                                     // data-synthetic cross-correlation
+        if (stn_comp_CC[i][k]<0) stn_comp_CC[i][k] = 0;
     }
  }
 

@@ -273,7 +273,9 @@ void gridvec(float xmin, float xmax, int npoints, float *pArray)
          * Factor 2.0 looks arbitrary. it could be made smaller.
          * Also it's not clear why dx should scale with the number of points. 
          * ie why not just make this a tiny constant. */
-        xoffset = dx/2.0;
+        //xoffset = dx/2.0;
+        xoffset = dx/20.0;  // 2019-08-01 some solutions (eg bondo) are at the search boundary (-ISO). 
+                            // This narrows the gap between search space and the lune boundary.
 
         fprintf(stderr, "create GRID vector. xmin= %10.5f xmax= %10.5f dx= %12.5e ... (old)\n", xmin, xmax, dx);
         /* apply offset at boundaries and recalculate dx based on new boundaries */

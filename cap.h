@@ -24,7 +24,7 @@
 
 /***********************Constants********************************/
 
-#define STN	200		/* up to STN stations */
+#define NSTA 1500   // max number of stations to read (landslides have dense coverage nsta~400). Original: 200. Original varname: NSTA
 
 #define NRC	3		/* 3 components of records */
 static char cm[NRC]={'t','r','z'};
@@ -52,7 +52,7 @@ static char grn_com[NGR]={'8','5','b','7','4','1','a','6','3','0'};
 
 /***********************global vars********************************/
 
-extern int total_n,loop,start,debug, Ncomp,Psamp[STN],Ssamp[STN],edep;
+extern int total_n,loop,start,debug, Ncomp,Psamp[NSTA],Ssamp[NSTA],edep;
 extern float data2;
 
 /* flags for computing uncertainty on the lune. 1==apply */
@@ -121,10 +121,10 @@ typedef struct {
 	MECA	meca;
 	float	dev[6];			/* uncertainty ellipsis */
 	float	wferr;			/* chi-square of waveform misfits for this solution */
-	int	cfg[STN][NCP];		/* correlation for each comp. */
-	int	shft[STN][NCP];		/* time shift for each comp. */
-	float	error[STN][NCP];	/* chi-square of waveform misfits for each component */
-	float   scl[STN][NCP];		/* amplifications to GF for each component */
+	int	    cfg[NSTA][NCP];		/* correlation for each comp. */
+	int	    shft[NSTA][NCP];		/* time shift for each comp. */
+	float	error[NSTA][NCP];	/* chi-square of waveform misfits for each component */
+	float   scl[NSTA][NCP];		/* amplifications to GF for each component */
 	int	ms;			/* number of local minimums < 10 */
 	int	others[10];		/* top 10 best solutions */
         int	flag;			/* =1 if the best soln is at boundary */

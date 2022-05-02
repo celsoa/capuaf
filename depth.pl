@@ -65,7 +65,7 @@ $J = "-JX$magpsx/$magpsy";
 
 $pwidth_in = 8.5;		# width of paper
 $pheight_in = 11;		# height of paper
-$fsize = 16;
+$fsize = 12;            # changed on 2022-04-07. ORIGINAL: $fsize = 16;
 system("gmtset BASEMAP_TYPE plain PAPER_MEDIA Custom_${pwidth_in}ix${pheight_in}i MEASURE_UNIT inch LABEL_FONT_SIZE $fsize ANOT_FONT_SIZE $fsize");
 
 #-----------
