@@ -687,29 +687,29 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
         #-----------------------------------------------------------
         # copy, sort, cleanup input weight file
         #-----------------------------------------------------------
-        print STDERR "Sort,clean up weight file...\n";
         # Sort weight file by distance or azimuth
         # Default is to use the weight file as it is
         $input_weight_file = "$eve/$weight";
         $clean_weight_file = "$eve/WEIGHT_CLEAN.dat";
         $station_info_file = "$eve/${eve}_station_list_ALL.dat";
 
-        open(IN,$input_weight_file) || die "weight file not present\n";
-        @weightlines = <IN>; $nsta = @weightlines;
+        print STDERR "Sorting and cleaning up weights file: $input_weight_file ...\n";
+        open(IN,$input_weight_file) || die "STOP. Weight file not found: $input_weight_file\n";
+        @weightlines = <IN>; $nsta_wfile = @weightlines;
         close(IN);
 
         # THIS SECTION DOES NOT RUN IF K IS NOT SPECIFIED
         # BUG: VR changes whether K is used or not.
         #      To avoid this we might have to run this section by default.
-        if ($isort != 0){
+        if ($isort != 0) {
             if ($isort == 1){
-                print STDERR "Ouput file will be sorted by distance\n";
+                $isortstr = "distance";
             }
             elsif ($isort == 2){
-                print STDERR "Ouput file will be sorted by azimuth\n";
+                $isortstr = "azimuth";
             }
             else {
-                die "sorting can only be by distance (-K1) or azimuth (-K2)";
+                die "STOP. Sorting can only be by distance (-K1) or azimuth (-K2)\n";
             }
 
             # Get data from station_list_ALL.dat
@@ -717,23 +717,29 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
             # BKS BK 37.876200 -122.235600 518.062577 279.769407
             # CMB BK 38.034500 -120.386500 360.643229 285.609184
             # MHC BK 37.341600 -121.642600 462.460019 273.168208
-            open(IN, $station_info_file) || die "STOP. {eid}/{eid}_station_list_ALL.dat file not present\n";
+            open(IN, $station_info_file) || die "STOP. Station file not found: ${eve}/${eve}_station_list_ALL.dat\n";
             @stnlines = <IN>;
-            $nstn = @stnlines;
+            $nsta_infofile = @stnlines;
             close(IN);
 
+            if ($nsta_wfile > $nsta_infofile) {
+                die "STOP. Mismatch NSTA. Not enough information to sort. wfile: $nsta_wfile. station file: $nsta_infofile\n";
+            }
+            elsif ($nsta_wfile < $nsta_infofile) {
+                print STDERR "WARNING. Mismatch NSTA. Check that wfile has the right station listing.\nwfile: $nsta_wfile. station file: $nsta_infofile\n";
+            }
+
             # Read specific columns from the weight file
-            print STDERR "Sorting weight file ...\n";
-            for ($i = 0; $i < $nsta; $i++) {
-                # NOTE the split command will not complain if the weight file
-                # doesn't have a column for shift2. split will still output the
-                # other values.
+            print STDERR "Sorting stations by $isortstr ...";
+            for ($i = 0; $i < $nsta_wfile; $i++) {
+                # NOTE ``split`` does not complain if the weight file doesn't have a column for shift2. 
+                # split will still parse the columns correctly.
                 ($name,$dist,$pv,$pr,$sv,$sr,$st,$ptime,$plen,$stime,$slen,$shift,$shift2)=split(" ",@weightlines[$i]);
                 ($stnm,$pol) = split("/",$name);
                 ($eve1,$net1,$name1,$loc1,$chan1) = split(/\./,$stnm);
 
                 # sort by distance, azimuth, or leave as is
-                for ($j = 0; $j < $nstn; $j++) {
+                for ($j = 0; $j < $nsta_infofile; $j++) {
                     # read columns from station_list_ALL.dat
                     ($name2, $net2, $lat2, $lon2, $dist2, $az2) = split(" ",@stnlines[$j]);
                     if (($name1 eq $name2) && ($net1 eq $net2)) {
@@ -753,36 +759,41 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
                     }
                 }
             }
+            print STDERR "done\n";
             # GET INDICES OF SORTED ELEMENTS IN station_list_ALL.dat
-            @sort_indx = sort{$col_to_sort[$a] <=> $col_to_sort[$b]} 0 .. $#col_to_sort;
+            # https://www.perltutorial.org/perl-sort/
+            # https://perldoc.perl.org/functions/sort
+            # <=>: spaceship operator. sorts numerically.
+            # $a, $b are implicitly local, pre defined in perl's sort routine.
+            print STDERR "Station distances: @col_to_sort\n";
+            @sorted_indices = sort{$col_to_sort[$a] <=> $col_to_sort[$b]} 0 .. $#col_to_sort;
 
             #-----------------------------------------------------------
             # Remove stations that have no information. 
             # DO THIS REGARDLESS. AT PRESENT THE SCRIPT SEEMS TO TAKE A STATION
             # INTO ACCOUNT WHETHER THE STATION IS USED OR NOT
             #-----------------------------------------------------------
-            print STDERR "Removing unused rows in the weight file ...\n";
+            print STDERR "Removing unused rows ...\n";
             # NO polarity, NO P weight, NO S weight
             open(OUT,'>',$clean_weight_file);
-            for ($i = 0; $i < $nsta; $i++) {
+            for ($i = 0; $i < $nsta_wfile; $i++) {
                 $ipol = 1;
-
                 # Copy tshifts surf-->love if love empty.
-                $ncol_weight = split(" ",@weightlines[$sort_indx[$i]]);
+                $ncol_weight = split(" ",@weightlines[$sorted_indices[$i]]);
                 if ($ncol_weight == 12) {
                     print STDERR "WARNING. Weight input has 12 columns (OLD). ";
-                    ($name,$dist,$pv,$pr,$sv,$sr,$st,$ptime,$plen,$stime,$slen,$shift) = split(" ",@weightlines[$sort_indx[$i]]);
+                    ($name,$dist,$pv,$pr,$sv,$sr,$st,$ptime,$plen,$stime,$slen,$shift) = split(" ",@weightlines[$sorted_indices[$i]]);
                     $shift2 = $shift;
                     print STDERR "Copying col12-->col13 (surf-->love). tshift $shift2 sec (CHECK!)\n";
                 } elsif ($ncol_weight == 13) {
                     # **** CHECK HERE ****
-                    #   NOTE sort_indx comes from station_list_ALL.dat, not from the weight files.
+                    #   NOTE sorted_indices comes from station_list_ALL.dat, not from the weight files.
                     #   NOTE the following sort is done on the weight files, but the
                     #        sort index comes from a different file which may be sorted
-                    #        differently. Does this work?
-                    ($name,$dist,$pv,$pr,$sv,$sr,$st,$ptime,$plen,$stime,$slen,$shift,$shift2) = split(" ",@weightlines[$sort_indx[$i]]);
+                    #        differently. Does this always work?
+                    ($name,$dist,$pv,$pr,$sv,$sr,$st,$ptime,$plen,$stime,$slen,$shift,$shift2) = split(" ",@weightlines[$sorted_indices[$i]]);
                 } else {
-                    die "ERROR. Weight file has $ncol_weight columns. Expecting 12 or 13.\n";
+                    die "STOP. Weight file has $ncol_weight columns. Expecting 12 or 13.\n";
                 }
 
                 ($stnm,$pol) = split("/",$name);
@@ -790,12 +801,15 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
                 # no polarity information
                 if ($pol eq ''){
                     $ipol = 0;
+                    #print STDERR "sta $stnm ipol $ipol\n";
                     #die "Into this loop!";
                 }  
                 # If pol or weight checks fail then keep the station
                 # Skip IF and(pol checks) and(weight checks)
+                # 2022-05-03 CHECK this portion doesn't seem to always work
+                #print STDERR "\nDEBUG sta $stnm pol $pol polwt $pol_wt pv $pv pr $pr sv $sv sr $sr st $st >> ";
                 if (($ipol==0 || $pol_wt==0 || $pol_wt==999) && $pv==0 && $pr==0 && $sv==0 && $sr==0 && $st==0) {
-                    print STDERR "DISCARDING: $name \t $dist \t $pv \t $pr \t $sv \t $sr \t $st \t $ptime \t $plen \t $stime \t $slen \t $shift \t $shift2 \n\n";
+                    print STDERR "DISCARDING: $name \t $dist \t $pv \t $pr \t $sv \t $sr \t $st \t $ptime \t $plen \t $stime \t $slen \t $shift \t $shift2 \n";
                     #die "Into this loop!";
                     next;
                 } 
@@ -808,10 +822,10 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
 
             ## Clean this weight file by removing stations that have no information (no polarity, no P weight, no S weight)
             #open(OUT,'>',$clean_weight_file);
-            #@sort_indx = sort{$col_to_sort[$a] <=> $col_to_sort[$b]} 0 .. $#col_to_sort;
-            #for ($i = 0; $i < $nsta; $i++){
+            #@sorted_indices = sort{$col_to_sort[$a] <=> $col_to_sort[$b]} 0 .. $#col_to_sort;
+            #for ($i = 0; $i < $nsta_wfile; $i++){
             #    $ipol = 1;
-            #    ($name,$dist,$pv,$pr,$sv,$sr,$st,$ptime,$plen,$stime,$slen,$shift)=split(" ",@weightlines[$sort_indx[$i]]);
+            #    ($name,$dist,$pv,$pr,$sv,$sr,$st,$ptime,$plen,$stime,$slen,$shift)=split(" ",@weightlines[$sorted_indices[$i]]);
             #    ($stnm,$pol) = split("/",$name);
             #
             #    if ($pol eq ''){$ipol = 0;}  # no polarity information
@@ -823,7 +837,7 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
             #    }
             #}
             #close(OUT);
-            print STDERR "Done sorting/cleaning input weight file.\n";
+            print STDERR "\nDone sorting/cleaning weight file. Outfile: $clean_weight_file\n";
         }
         else {
             copy $input_weight_file, $clean_weight_file;
@@ -870,8 +884,8 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
 
         plot:
         if ( $plot > 0 && ($? >> 8) == 0 ) {
-            print STDERR "----------------------------------\n";
-            print STDERR ">> cap.pl: plot results ... \n";
+            #print STDERR "----------------------------------\n";
+            #print STDERR ">> cap.pl: plot results ... \n";
             $odir = "./OUTPUT_DIR";
             chdir($odir);
             @dum = split('_', $md_dep);  # split mdl string
@@ -883,7 +897,7 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
             &plot($md_dep, $tmax_body, $tmax_surf, $amplify_P, $amplify_S, $ncom, $spib, $spis, $filterBand, $fmt_flag, @event, $model, $dep, $dura, $riseTime, $pol_wt);
             unlink(<${md_dep}_*.?>) unless $keep;
             chdir("../");
-            print STDERR ">> cap.pl: plotting finished.\n";
+            print STDERR "cap.pl: Inversion and plotting completed.\n";
         } else {
             print STDERR ">> cap.pl: no plots generated.\n";
         }
