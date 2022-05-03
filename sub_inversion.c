@@ -716,7 +716,7 @@ SOLN searchMT(
     fprintf(stderr,"writing done.\n\n");
 #endif
 
-    fprintf(stderr," ==== Nstn = %d; Station factor = %f\n", nda, stn_rew);
+    fprintf(stderr,"NSTA = %d; Station factor = %f\n", nda, stn_rew);
 
     return(best_sol);
 }
