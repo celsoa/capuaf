@@ -2,6 +2,9 @@
 use List::Util qw[min max];
 
 sub plot {
+    print STDERR "\n============================\n";
+    print STDERR "cap_plt: begin plot results.\n";
+    print STDERR "============================\n";
 
 #  local($mdl, $tmax_body, $tmax_surf $amplify_P, $num_com, $spis) = @_; # original
   local($mdl, $tmax_body, $tmax_surf, $amplify_P, $amplify_S, $num_com, $spib, $spis, $filterBand, $fmt_flag, $evid, $model, $depth, $dura, $riseTime, $pol_wt) = @_;
@@ -90,7 +93,8 @@ $only_pol = 0;
   $pwidth_in = $width +1.5 ;  # width of paper    # orig 8.5
   print "\n$nrow rows to plot";
   print "\npaper is $pwidth_in inches wide and $pheight_in inches tall";
-  system("gmtset BASEMAP_TYPE plain PAPER_MEDIA Custom_${pwidth_in}ix${pheight_in}i MEASURE_UNIT inch");
+  print STDERR ">>> gmtset BASEMAP_TYPE plain PAPER_MEDIA Custom_${pwidth_in}ix${pheight_in}i MEASURE_UNIT inch\n";
+  system("gmt gmtset BASEMAP_TYPE plain PAPER_MEDIA Custom_${pwidth_in}ix${pheight_in}i MEASURE_UNIT inch");
 
   # horizontal offset (why is it needed?)
   #$xoffset="3.0";
@@ -120,13 +124,13 @@ $only_pol = 0;
   #$plt1s = "| pssac2 -JX${widths}i/${height}i -L${spis} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_surf/0/$nn -X${xoffset}i -Ent-2 -M$stams -O -K -P >> $outps";
   #$plt1b = "| pssac -JX${widthb}i/${height}i -S${spib} -M$stamb -R0/$twin_body/0/$nn               -Y0.2i      -K -P -V >> $outps";
   #$plt1s = "| pssac -JX${widths}i/${height}i -S${spis} -M$stams -R0/$twin_surf/0/$nn -X${xoffset}i          -O -K -P -V >> $outps";
-  $plt1b = "| pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
-  $plt1s = "| pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i       -O -K -P  >> $outps";
+  $plt1b = "| gmt pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
+  $plt1s = "| gmt pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i           -O -K -P >> $outps";
 
   # (2) plot text labels
-  $plt2_stn_info = "| pstext -JX -R -O -K -N -X-${xoffset}i >> $outps";
-  $plt2_wf_info_b = "| pstext -JX${widthb}i/${height}i -R0/$twin_body/0/$nn -O -K -N >> $outps";
-  $plt2_wf_info_s = "| pstext -JX${widths}i/${height}i -R0/$twin_surf/0/$nn -X${xoffset}i -O -K -N >> $outps";
+  $plt2_stn_info  = "| gmt pstext -JX -R -O -K -N -X-${xoffset}i >> $outps";
+  $plt2_wf_info_b = "| gmt pstext -JX${widthb}i/${height}i -R0/$twin_body/0/$nn -O -K -N >> $outps";
+  $plt2_wf_info_s = "| gmt pstext -JX${widths}i/${height}i -R0/$twin_surf/0/$nn -X${xoffset}i -O -K -N >> $outps";
 
   # (3) plot beachballs (solution, followed by possible local minima)
   $ballcolor = "150";
@@ -134,20 +138,20 @@ $only_pol = 0;
   $dY = ${pheight_in} - 1.6;
   $dX = -0.7-$xoffset;
 #  $plt3 = "| psmeca -JX5i/1i -R-1/9/-1/1 -Sa5i -G$ballcolor -Y${dY}i -X-0.7i -O -K >> $outps";
-  $plt3 = "| psmeca -JX5i/1i -R-1/9/-1/1 -Sa5i -G$ballcolor -Y${dY}i -X${dX}i -O -K >> $outps";
-  $plt3 = "| psmeca -JX5i/1i -R-1/9/-1/1 -Sm8i -G$ballcolor -Y${dY}i -X${dX}i -O -K >> $outps" if $tensor[1] eq "tensor";
+  $plt3 = "| gmt psmeca -JX5i/1i -R-1/9/-1/1 -Sa5i -G$ballcolor -Y${dY}i -X${dX}i -O -K >> $outps";
+  $plt3 = "| gmt psmeca -JX5i/1i -R-1/9/-1/1 -Sm8i -G$ballcolor -Y${dY}i -X${dX}i -O -K >> $outps" if $tensor[1] eq "tensor";
 
   # (4) plot markers on beachball
   # note: -JPa is a basemap for polar coordinates, clockwise from north
 
   # azimuths
-  $plt4b = "| psxy -JPa1i -R0/360/0/1 -Sc0.02i -N -W0.5p,0/0/0 -G255 -O -K >> $outps";
+  $plt4b = "| gmt psxy -JPa1i -R0/360/0/1 -Sc0.02i -N -W0.5p,0/0/0 -G255 -O -K >> $outps";
 
   # supplemental: upper hemisphere piercing points on beachballs (o)
   #$plt4a = "| psxy -JPa1i -R0/360/0/1 -Sc0.08i -N -W0.5p,255/0/0 -O -K >> $outps";
 
   # default: lower hemisphere piercing points on beachballs (x) (last command: no -K appears)
-  $plt4 = "| psxy -JPa1i -R0/360/0/1 -Sx0.10i -N -W0.5p,255/0/0 -G255 -O -K >> $outps";
+  $plt4 = "| gmt psxy -JPa1i -R0/360/0/1 -Sx0.10i -N -W0.5p,255/0/0 -G255 -O -K >> $outps";
 
 #  $plt1=$plt2=$plt3="|cat";	# output GMT commands to command window for testing
 
@@ -176,7 +180,7 @@ $only_pol = 0;
   $dX = 0.8;
   $dY = 0.3;
   #$plt4_5 = "| pstext -J -R -Y${dY}i -X${dX}i -O -N >> $outps";
-  $plt4_5 = "| pstext -J -R -Y${dY}i -X${dX}i -O -N -V -F+jl+f12p,Helvetica,black >> $outps";
+  $plt4_5 = "| gmt pstext -J -R -Y${dY}i -X${dX}i -O -N -V -F+jl+f12p,Helvetica,black >> $outps";
 
 #--------------------------
 
@@ -193,43 +197,48 @@ $only_pol = 0;
 
   # plot beachball
 # $xplt3 = "| psmeca -JX${fac}i/${fac}i -R-1/1/-1/1 -N -G$ballcolor -W2p,0/0/0 -Sm${fac2}i -X1i -Y2i -K -P >> $outps2";
-  $xplt3 = "| psmeca -JX${fac}i/${fac}i -R-1/1/-1/1 -N -G$ballcolor -W2p,0/0/0 -Sa${fac}i -X1i -Y2i -K -P >> $outps2";
-  $xplt3 = "| psmeca -JX${fac}i/${fac}i -R-1/1/-1/1 -N -G$ballcolor -W2p,0/0/0 -Sm${fac2}i -X1i -Y2i -K -P >> $outps2" if $tensor[1] eq "tensor";
+  $xplt3 = "| gmt psmeca -JX${fac}i/${fac}i -R-1/1/-1/1 -N -G$ballcolor -W2p,0/0/0 -Sa${fac}i -X1i -Y2i -K -P >> $outps2";
+  $xplt3 = "| gmt psmeca -JX${fac}i/${fac}i -R-1/1/-1/1 -N -G$ballcolor -W2p,0/0/0 -Sm${fac2}i -X1i -Y2i -K -P >> $outps2" if $tensor[1] eq "tensor";
 
   # plot markers on beachball
   # note: -JPa is a basemap for polar coordinates, clockwise from north
 
   # azimuths
-  $xplt4b = "| psxy $JP -R0/360/0/1 -Sc0.02i -N -W0.5p,0/0/0 -G255 -O -K >> $outps2";
+  $xplt4b = "| gmt psxy $JP -R0/360/0/1 -Sc0.02i -N -W0.5p,0/0/0 -G255 -O -K >> $outps2";
 
   # supplemental: upper hemisphere piercing points on beachballs (o)
-  $xplt4a = "| psxy $JP -R0/360/0/1 -Sc0.08i -N -W0.5p,255/0/0 -O -K >> $outps2";
+  $xplt4a = "| gmt psxy $JP -R0/360/0/1 -Sc0.08i -N -W0.5p,255/0/0 -O -K >> $outps2";
 
   # default: lower hemisphere piercing points on beachballs (x)
-  $xplt4 = "| psxy $JP -R0/360/0/1 -Sx0.10i -N -W0.5p,255/0/0 -G255 -O -K >> $outps2";
-  $xplt4c = "| psxy $JP -R0/360/0/1 -St0.30i -N -W1p,0/255/0 -G255 -O -K >> $outps2";  # up polarity (green) - triangle
-  $xplt4d = "| psxy $JP -R0/360/0/1 -Si0.30i -N -W1p,0/0/255 -G255 -O -K >> $outps2";  # down polarity (blue) - triangle
-  $xplt4e = "| psxy $JP -R0/360/0/1 -St0.30i -N -W1p,255/0/0 -G255 -O -K >> $outps2";  # non-matching polarity red) - triangle
-  $xplt4f = "| psxy $JP -R0/360/0/1 -Si0.30i -N -W1p,255/0/0 -G255 -O -K >> $outps2";  # non-matching polarity (red) - triangle
+  $xplt4  = "| gmt psxy $JP -R0/360/0/1 -Sx0.10i -N -W0.5p,255/0/0 -G255 -O -K >> $outps2";
+  $xplt4c = "| gmt psxy $JP -R0/360/0/1 -St0.30i -N -W1p,0/255/0 -G255 -O -K >> $outps2";  # up polarity (green) - triangle
+  $xplt4d = "| gmt psxy $JP -R0/360/0/1 -Si0.30i -N -W1p,0/0/255 -G255 -O -K >> $outps2";  # down polarity (blue) - triangle
+  $xplt4e = "| gmt psxy $JP -R0/360/0/1 -St0.30i -N -W1p,255/0/0 -G255 -O -K >> $outps2";  # non-matching polarity red) - triangle
+  $xplt4f = "| gmt psxy $JP -R0/360/0/1 -Si0.30i -N -W1p,255/0/0 -G255 -O -K >> $outps2";  # non-matching polarity (red) - triangle
 
   # plot text labels
-  $xplt5a = "| pstext $JP -R0/360/0/1 -N -O -K >> $outps2";
-  $xplt5b = "| pstext $JP -R0/360/0/1 -N -O -K >> $outps2";
-  $xplt5c = "| pstext $JP -R0/360/0/1 -N -O -K >> $outps2";
+  $xplt5a = "| gmt pstext $JP -R0/360/0/1 -N -O -K >> $outps2";
+  $xplt5b = "| gmt pstext $JP -R0/360/0/1 -N -O -K >> $outps2";
+  $xplt5c = "| gmt pstext $JP -R0/360/0/1 -N -O -K >> $outps2";
 
   # title (LAST COMMAND: no -K appears)
-  $xplt6 = "| pstext -JX -R -N -O -Xa0 -Ya7.5 >> $outps2";
+  $xplt6 = "| gmt pstext -JX -R -N -O -Xa0 -Ya7.5 >> $outps2";
 
 #--------------------------
 # FIGURE 1: waveform fits with moment tensor
   print STDERR ">>> cap_plt.pl: plot waveform fits and best mechanism ...\n";
   # 
-  print "\n------------------- SUMMARY BEST SOLUTION---";
-  print "\nmeca:  \n@meca";
-  print "\ntensor:\n@tensor";
-  print "\nothers:\n@others";
-  print "\ncapout:\n@capout";
-  print "--------------------- END SUMMARY ------------\n";
+  print "\n============================\n";
+  print "INVERSION RESULTS\n";
+  print "============================\n";
+  print "\nmeca:  \t@meca";
+  print "\ntensor:\t@tensor";
+  print "\nothers:\t@others";
+  print "\nCAP outfile:\n";
+  print "---------------------------------\n";
+  print "@capout";
+  print "---------------------------------\n";
+  print "END SUMMARY\n";
 
 # get strike dip and rake
   $stk = @meca[0];
@@ -295,6 +304,10 @@ $only_pol = 0;
     $i++;
   }
 #--------------------------compute pssac plotting info (scaling factor ampmax_body)
+  print "============================\n";
+  print "Begin plotting ...\n";
+  print "============================\n";
+
   print "Max amplitude body waves $ampmax_body \n";
   print "Max amplitude surf waves $ampmax_surf \n";
 ##---------------------------------------
@@ -325,8 +338,21 @@ $only_pol = 0;
   #       The scale factor is defined as yscale = size*(north-south)/(depmax-depmin)/map_height 
   #    <size>/<alpha>: 
   #       <alpha> < 0, use the same scaling factor for all traces. The scaling factor will scale the first trace to <size>[<u>].
-  #       <alpha> = 0, multiply all traces by <size>. No unit is allowed.  (nb 2021-03-31 from above: specifying alpha = 0.0 will give absolute amplitudes)
-  #       <alpha> > 0, multiply all traces by size*r^alpha, r is the distance range in km.
+  #       <alpha> = 0, multiply all traces by <size>. No unit is allowed.  (nb 2021-03-31 "specifying alpha = 0.0 will give absolute amplitudes", see above)
+  #
+  # PSSAC version GMT  6.3
+  #   -M<size>/<alpha>
+  #    Vertical scaling, with each trace will scaled to <size>. 
+  #    The default unit is PROJ_LENGTH_UNIT. 
+  #    The scale factor is defined as yscale = size*(north-south)/(depmax-depmin)/map_height. 
+  #    Specify <alpha>:
+  #    • <alpha> < 0, use the same scaling factor for all traces. The scaling factor will scale the first trace to <size>[<u>].
+  #    • <alpha> = 0, multiply all traces by <size>. No unit is allowed.
+  #    • <alpha> > 0, multiply all traces by size*r^alpha, r is the distance range in km.
+  # 
+  #     NB 2022-05-03
+  #         want <size> to anything reasonable (1? = no scaling)
+  #         want <alpha> negative to scale all by the same amount. unless want different plotting.
   #----------------------------------------------------------
 
   ##OPT 1. scale by the maximum body wave amplitude ($ampmax_body) and then scale by $amplify_P factor (-P flag)
@@ -344,16 +370,33 @@ $only_pol = 0;
   #$stams = "$ampscale_surf/0.";
   ## 2021-03-29 update for pssac gmt6
   # scale BODY amp. flag -P. -M<size>/<alpha>
-  $ampscale_body = "1/0";
-  $ampscale_body = "1/-1";
   # scale SURF amp. flag -p. -M<size>/<alpha>
-  $ampscale_surf = "1/-1";   # alpha < 0 use the same scaling factor for all traces. The scaling factor will scale the first trace to <size>[<u>].
-  #$ampscale_surf = "50/0.0"; # alpha = 0 multiply all traces by <size>. No unit is allowed.  (nb 2021-03-31 from above: specifying alpha = 0.0 will give absolute amplitudes)
-  #$ampscale_surf = "1/1";   # alpha > 0 multiply all traces by size*r^alpha, r is the distance range in km.
+  # <size>: each trace will scaled to <size>. The default unit is PROJ_LENGTH_UNIT.
+  # alpha < 0 use the same scaling factor for all traces. The scaling factor will scale the first trace to <size>[<u>]
+  # alpha = 0 multiply all traces by <size>. No unit is allowed.  (nb 2021-03-31 from above: specifying alpha = 0.0 will give absolute amplitudes)
+  # alpha > 0 multiply all traces by size*r^alpha, r is the distance range in km
+  $ampscale_body = "1/-1";
+  #$ampscale_body = "3000.0/0";
+  #$ampscale_body = "30/1";
+  $ampscale_body = "0.1/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
+  $ampscale_body = "0.2/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
+  #$ampscale_body = "0.5/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
+  #$ampscale_body = "0.9/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
+  $ampscale_surf = "1/-1";   
+  $ampscale_surf = "0.5/-1"; 
+  #$ampscale_surf = "50/0.0";
+  #$ampscale_surf = "1/1";   
+  #
+  # 2022-05-03 TEST AGAIN GMT 6.3. want: <anything/negative>
+  $ampscale_body = "1/-1";
+  $ampscale_surf = "1/-1";
 
-  print "pssac option -M: normalization body $ampscale_body \n";
-  print "pssac option -M: normalization surf $ampscale_surf \n";
+  print "pssac norm BODY -M<size/alpha>: $ampscale_body \n";
+  print "pssac norm SURF -M<size/alpha>: $ampscale_surf \n";
   print "\n*** DEBUG amplitude scaling stams $stams stamb $stamb amplify_P $amplify_P amp $amp ***\n";
+  #-----------------------------------------------------------
+  print "Plotting waveforms ... \n";
+  #-----------------------------------------------------------
 #---------------------------------------
   # 20151025 cralvizuri - uncomment this command to normalize surf waves
   #                       This is for figures in Uturuncu FMT paper
@@ -374,13 +417,17 @@ $only_pol = 0;
   #    +t<tmark> align all trace along time mark. Choose <tmark> from -5(b), -4(e), -3(o), -2(a), 0-9(t0-t9).
   #    +r<reduce_vel> reduce velocity in km/s.
   #    +s<shift> shift all traces by <shift> seconds.
-
+  #
+  # 2022-05-03 
+  # pssac GMT 6.3 
+  # -R<west>/<east>/<south>/<north>[+r]
+  #
   #$plt1b = "| pssac2 -JX${widthb}i/${height}i -L${spib} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_body/0/$nn -Y0.2i -Ent-2 -M$stamb -K -P >> $outps";
   #$plt1s = "| pssac2 -JX${widths}i/${height}i -L${spis} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_surf/0/$nn -X${xoffset}i -Ent-2 -M$stams -O -K -P >> $outps";
   #$plt1b = "| pssac -JX${widthb}i/${height}i -S${spib} -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
   #$plt1s = "| pssac -JX${widths}i/${height}i -S${spis} -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i           -O -K -P >> $outps";
-  $plt1b = "| pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
-  $plt1s = "| pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i           -O -K -P >> $outps";
+  $plt1b = "| gmt pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
+  $plt1s = "| gmt pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i           -O -K -P >> $outps";
   #$plt1s = "| pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i    -V -Vc -O -K -P >> $outps";
   #print "*** DEBUG plt1s $plt1s\n";
 
@@ -456,7 +503,7 @@ $only_pol = 0;
         for($j=0;$j<2;$j+=$inc) {
             $com1=8-2*$j; $com2=$com1+1;    # seismogram extensions (.0, .1, .2...)
             if ($aa[7*$j+2]>0) {
-# <saclist> contains SAC files + plotting parameters. See above for formatting instructions. 
+# <saclist> contains SAC files + plotting parameters. See above for formatting instructions.
 #           Each record has 1, 3 or 4 items:  <filename> [<X> <Y> [<pen>]].
                 #printf "(j=$j) x=$x\t"; # debug
                 #printf PLT "%s %f %f 5/0/0/0\n",  $nam.$com1,$x+0,$nn-$i-2;     # data (black)
@@ -464,8 +511,8 @@ $only_pol = 0;
                 printf PLT "%s %f %f 0.8,black\n", $nam.$com1,$x+0,$nn-$i-2;   # data (black)
                 printf PLT "%s %f %f 0.8,red\n",   $nam.$com2,$x+0,$nn-$i-2;   # synthetic (red)
             } elsif ($keepBad) {
-                printf PLT "%s %f %f 0.8,green\n",$nam.$com1,$x+0,$nn-$i-2;   # bad data (green)
-                printf PLT "%s %f %f 0.8,red\n",  $nam.$com2,$x+0,$nn-$i-2;   # synthetic (red)
+                printf PLT "%s %f %f 0.8,green\n",$nam.$com1,$x+0,$nn-$i-2;  # bad data (green)
+                printf PLT "%s %f %f 0.8,red\n",  $nam.$com2,$x+0,$nn-$i-2;  # synthetic (red)
             }
             $x = $x + $x0[$j];
         }
@@ -475,7 +522,9 @@ $only_pol = 0;
     }
     close(PLT);
 
-    # plot waveforms surface waves
+    #-----------------------------------------------------------
+    print "Plotting station data and labels ... \n";
+    #-----------------------------------------------------------
     open(PLT, $plt1s);
     $i = 0;
     foreach (@capout_splice) {
@@ -491,7 +540,7 @@ $only_pol = 0;
             #printf "*** DEBUG j $j x $x\n"; 
             $com1=8-2*$j; $com2=$com1+1;
             if ($aa[7*$j+2]>0) {
-                #printf STDERR "cap_plt.pl. DEBUG x %f j %d x0[j] %f TEST %f\n", $x, $j, $x0[$j], $x0[$j]+ $aa[7*$j+5] ;
+                printf STDERR "cap_plt.pl. DEBUG x %f j %d x0[j] %f TEST %f\n", $x, $j, $x0[$j], $x0[$j]+ $aa[7*$j+5] ;
                 # <saclist> contains SAC files + plotting parameters. See above for formatting instructions. 
                 #           Each record has 1, 3 or 4 items:  <filename> [<X> <Y> [<pen>]].
                 # NOTE the wiggles already are pre-aligned here
@@ -671,7 +720,10 @@ $only_pol = 0;
     close(PLT);
 
     
-    # plot beachball
+    #-----------------------------------------------------------
+    print "Plotting little beachball ...\n";
+    #-----------------------------------------------------------
+
     # note: magnitude scale is "fixed" at 1e17 for psmeca -Sm and 1 for psmeca -Sa
     open(PLT, $plt3);
     if ($tensor[1] eq "tensor") {
@@ -764,15 +816,17 @@ $only_pol = 0;
 
     #-----------------------------------------------------------
 
-  print STDERR ">>> cap_plt.pl: done plot waveforms + best mecha.\n";
+  print STDERR "Done plotting waveforms + best mechanism.\n";
   }  # while (@capout) {
 
-#---------------------------------
-# FIGURE 2: big moment tensor with station names at lower-hemisphere piercing points
-  print STDERR ">>> cap_plt.pl: plotting big beachball ...\n";
+  #---------------------------------
+  # FIGURE 2: big moment tensor with station names at lower-hemisphere piercing points
+  print STDERR "Plotting big beachball ...\n";
+  #---------------------------------
   $pwidth_in = 8.5;  # width of paper
   $pheight_in = 11;  # height of paper
-  system("gmtset BASEMAP_TYPE plain PAPER_MEDIA Custom_${pwidth_in}ix${pheight_in}i MEASURE_UNIT inch");
+  #system("gmtset BASEMAP_TYPE plain PAPER_MEDIA Custom_${pwidth_in}ix${pheight_in}i MEASURE_UNIT inch");
+  system("gmt gmtset BASEMAP_TYPE plain PAPER_MEDIA Custom_${pwidth_in}ix${pheight_in}i MEASURE_UNIT inch");
 
   # restore
   @capout=@capout0;
@@ -864,9 +918,10 @@ if ($only_pol == 0) {
     close(XPLT);
 
 }
-  print STDERR ">>> cap_plt.pl: done plotting big beachball.\n";
+  print STDERR "Done plotting big beachball.\n";
 }
 #---------------------------------
+  print "Summary results: @meca\n\n";
 
 }
 1;
