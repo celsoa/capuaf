@@ -168,13 +168,12 @@ int main (int argc, char **argv) {
 
   // dtP_pick[NSTA] was con_shft[NSTA] earlier
 
-  //fprintf(stderr,"\n----------------------------------------------------------\n");
   fprintf(stderr,"\n==============================\n"); 
-  fprintf(stderr,"Initialize CAP and read data\n");
+  fprintf(stderr,"Initializing CAP\n");
   fprintf(stderr,"==============================\n"); 
 
   // start random number generator (randvec function). See also cap.h
-  fprintf(stderr,"NOTE random seed = %d (randvec function)\n", RANDSEED);
+  fprintf(stderr,"\n--> NOTE random seed = %d (randvec function)\n", RANDSEED);
   // option 1 seed is user defined
   srand(RANDSEED);
   // option 2 seed using current time
@@ -199,7 +198,7 @@ int main (int argc, char **argv) {
   long int order=4, nsects;
   void  principal_values(float *);
 
-  fprintf(stderr,"\nReading input parameters for inversion\n");
+  fprintf(stderr,"\n--> Reading input parameters for inversion\n");
 
 #ifdef DIRECTIVITY
   int ns_pnl, ns_sw;
@@ -273,10 +272,10 @@ int main (int argc, char **argv) {
   
 
   if (useDisp == 1) {
-      fprintf(stderr, "\nWARNING flag W1. Will convert velocity to displacement\n\n");
+      fprintf(stderr, "\n--> WARNING flag W1. Will convert velocity to displacement\n");
   }
 
-  fprintf(stderr, "search type = %d, norm = %d\n", search_type, norm);
+  fprintf(stderr, "\n--> Search type = %d, norm = %d\n", search_type, norm);
 
   /*** input source functions and filters for pnl and sw ***/
   scanf("%f",&dt);          // sampling interval
@@ -327,7 +326,7 @@ int main (int argc, char **argv) {
   w_pnl[0]=wt_love;                                           // weight for love waves (default = 1)
 
   /** begin -- get range of search parameters **/
-  fprintf(stderr, "\nInput parameter ranges \n");
+  fprintf(stderr, "\n--> Input parameter ranges\n");
   // NOTE magnitude parameters include dMw and number of points
   scanf("%f%f%d%f", &searchPar->mw1, &searchPar->mw2, &searchPar->nmw, &searchPar->dmw);
   // (v, w, k, h, s) format: (start, end, number of points and grid spacings (for regular grid))
@@ -353,7 +352,7 @@ int main (int argc, char **argv) {
   fprintf(stderr, "k1= %11.6f k2= %11.6f nk= %10d dk= %10d\n", searchPar->k1, searchPar->k2, searchPar->nk, searchPar->dk);
   fprintf(stderr, "h1= %11.6f h2= %11.6f nh= %10d dh= %10d\n", searchPar->h1, searchPar->h2, searchPar->nh, searchPar->dh);
   fprintf(stderr, "s1= %11.6f s2= %11.6f ns= %10d ds= %10d\n", searchPar->s1, searchPar->s2, searchPar->ns, searchPar->ds);
-  fprintf(stderr, "\nNumber of solutions to prepare = %10d\n", searchPar->nsol);
+  fprintf(stderr, "\n--> Number of solutions to prepare = %10d\n", searchPar->nsol);
 
   // allocate memory for (strike, dip, rake)
   // grid.err = (float *) malloc(grid.n[0]*grid.n[1]*grid.n[2]*sizeof(float));
@@ -362,14 +361,14 @@ int main (int argc, char **argv) {
     fprintf(stderr,"fail to allocate memory for storing misfit errors\n");
     return -1;
   }
-  fprintf(stderr,"Allocating memory for moment tensors (nsol = %10d) ... ", searchPar->nsol);
+  fprintf(stderr,"\n--> Allocating memory for moment tensors (nsol = %10d) ... ", searchPar->nsol);
   ARRAYMT * arrayMT = calloc(searchPar->nsol, sizeof(ARRAYMT));
   
   if (arrayMT == NULL) {
-    fprintf(stderr,"Abort. unable to allocate.\n");
+    fprintf(stderr,"STOP. Unable to allocate memory.\n");
     return 0;
   } else {
-    fprintf(stderr,"done.\n\n");
+    fprintf(stderr,"Done.\n");
   }
 
   /** end -- get range of search parameters **/
@@ -388,7 +387,7 @@ int main (int argc, char **argv) {
   sw_reward = (y1*(f2_sw-f1_sw));
   //pnl_reward = 1;
   //sw_reward = 1;
-  fprintf(stderr, "Pnl reward: %f ; Sw reward: %f \n",pnl_reward, sw_reward);
+  fprintf(stderr, "\n--> Pnl reward: %f ; Sw reward: %f \n",pnl_reward, sw_reward);
 
   if (nda > NSTA) {
     fprintf(stderr,"number of station, %d, exceeds max., some stations are discarded\n",nda);
@@ -399,6 +398,7 @@ int main (int argc, char **argv) {
   
   /* used when not discarding stations with zero weight */
   if (skip_zero_weights==0){
+      //fprintf(stderr, "DEBUG. YES. REACHED THIS PART OF THE CODE.\n");
       fm_copy = (FM *) malloc(nda*sizeof(FM));
   }
 
@@ -412,8 +412,11 @@ int main (int argc, char **argv) {
   n_shft = 0;
   nfm = 0;
 
-  fprintf(stderr,"Reading waveform data (nsta = %d) ... \n", nda);
+  fprintf(stderr,"\n==============================\n"); 
+  fprintf(stderr,"Reading waveform data\n");
+  fprintf(stderr,"==============================\n"); 
 
+  fprintf(stderr,"(nsta = %d):  ", nda);
   for(i=0;i<nda;i++) {
     nwaveforms++;
     fprintf(stderr,"%d ", nwaveforms);
@@ -1011,6 +1014,10 @@ int main (int argc, char **argv) {
 
   /**************output the results***********************/
   // Stop if the best magnitude is at a boundary. Except for a point search.
+  fprintf(stderr,"\n==============================\n"); 
+  fprintf(stderr,"Saving results and waveforms ...\n");
+  fprintf(stderr,"==============================\n"); 
+
   if(searchPar->dmw > TOLNMAG) {
       if (fabs(sol.meca.mag - searchPar->mw1) <= TOLNMAG 
               || fabs(sol.meca.mag - searchPar->mw2) <= TOLNMAG) {
@@ -1029,7 +1036,6 @@ int main (int argc, char **argv) {
       }
   }
 
-  fprintf(stderr,"Preparing out file ...\n");
   // sprintf(mod_dep,"%s_%s_%03d", eve, model, depth);                       // rename .out file
   // sprintf(mod_dep,"%s_%s_%03d",fmpdata->evid, fmpdata->vmod, fmpdata->idep);
   // strcat(strcat(strcat(strcpy(tmp,eve),"/"),mod_dep),".out");  
@@ -1100,7 +1106,7 @@ for(obs=obs0,i=0;i<nda;i++,obs++) {
 
 //-----------------------SAVE WAVEFORMS FOR PLOT------------------------------
 if (plot==1) {
-    fprintf(stderr,"Saving seismograms for stations ... \n");
+    fprintf(stderr,"Saving seismograms for plotting ... \n");
     // generate synthetic and data waveforms for each 5 component (filtered and cut) 
     // these are deleted at the later stage (see cap.pl)
     for(obs=obs0,i=0;i<nda;i++,obs++) {
@@ -1258,17 +1264,22 @@ if (plot==1) {
  fclose(wt);
  fclose(wt2);
 
+ // 2022-05-02 centos7 core dumps: *** Error in `cap': munmap_chunk(): invalid pointer: 0x00000000026160cc ***
+ // from my tests, the error comes from attempting to free fm_copy. Not clear why because there is a malloc for it. 
  free(grid.err);
  free(arrayMT); 
  free(searchPar);
  free(obs0);
  free(fm0);
- free(fm_copy);
+ //fprintf(stderr, "\n*** DEBUG: ATTEMPT FREE MEMORY ****\n");
+ //free(fm_copy);
+ //fprintf(stderr, "\n*** DEBUG: END FREE MEMORY ****\n");
  free(data_syn);
  free(data_obs);
 
- fprintf(stderr,"\ncap.c: DONE\n");
- fprintf(stderr,"----------------------------------------\n\n");
+ fprintf(stderr,"\n==============================\n"); 
+ fprintf(stderr,"cap.c: DONE\n");
+ fprintf(stderr,"==============================\n"); 
  return 0;
 }
 
