@@ -183,16 +183,16 @@ $usage =
     Otherwise,
     2) If positive apparent velocities are given to the code (see -V below), it will use
        them to calculate the time windows:
-       t1 = dist/vp        - 0.3*tmax_body, 
-       t2 = ts             + 0.2*tmax_body
-       t3 = dist/vLove     - 0.3*tmax_surf, 
-       t4 = dist/vRayleigh + 0.7*tmax_surf
+        t1 = dist/vp        - 0.3*tmax_body
+        t2 = ts             + 0.2*tmax_body
+        t3 = dist/vLove     - 0.3*tmax_surf
+        t4 = dist/vRayleigh + 0.7*tmax_surf
     Otherwise,
     3) Using the tp, ts in the Green function header
- 	  t1 = tp   - 0.2*tmax_body,  
-      t2 = t1   +     tmax_body
-	  t3 = ts   - 0.3*tmax_surf,  
-      t4 = t3   +     tmax_surf
+        t1 = tp - 0.2*tmax_body
+        t2 = t1 +     tmax_body
+        t3 = ts - 0.3*tmax_surf
+        t4 = t3 +     tmax_surf
     Here tmax_body, tmax_surf are the maximum lengths for the Pnl and surface waves windows
     (see the -T options below).
 
@@ -903,4 +903,7 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
         }
     }
 }
+    # TODO 2022-05-04 rename output dir to include time. Options: 1. propagate into CAP.c. 2: simply rename capc's output_dir into this dir.
+    ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+    printf("%4d-%02d-%02dT%02d:%02d:%02d\n", $year+1900, $mon, $mday, $hour, $min, $sec);
 exit(0);

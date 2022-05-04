@@ -419,7 +419,7 @@ int main (int argc, char **argv) {
   fprintf(stderr,"(nsta = %d):  ", nda);
   for(i=0;i<nda;i++) {
     nwaveforms++;
-    fprintf(stderr,"%d ", nwaveforms);
+    fprintf(stderr,"%d ", nwaveforms);  
 
     //-----------------------------------------------------------
     // Read weight file
@@ -486,7 +486,9 @@ int main (int argc, char **argv) {
     strcat(strcat(strcat(strcpy(tmp,eve),"/"),obs->stn), ".t");
     c_pt = strrchr(tmp,(int) 't');
 
-    // Loop over components (NRC = 3)
+    //********************************* 
+    // read observed waveforms (NRC = 3
+    //********************************* 
     // See here for more info on sac headers:
     // https://ds.iris.edu/files/sac-manual/manual/file_format.html 
     for(j=0;j<NRC;j++){
@@ -548,7 +550,9 @@ int main (int argc, char **argv) {
     obs->stlo = hd->stlo;              // station longitude
     // end
 
-    // Loop over greens function (NGR = 10)
+    //********************************* 
+    // read greens functions (NGR = 10)  
+    //********************************* 
     for(j=0;j<NGR;j++) {
         *c_pt = grn_com[j];
         indx = 0; 
