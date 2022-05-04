@@ -180,7 +180,7 @@ $only_pol = 0;
   $dX = 0.8;
   $dY = 0.3;
   #$plt4_5 = "| pstext -J -R -Y${dY}i -X${dX}i -O -N >> $outps";
-  $plt4_5 = "| gmt pstext -J -R -Y${dY}i -X${dX}i -O -N -V -F+jl+f12p,Helvetica,black >> $outps";
+  $plt4_5 = "| gmt pstext -J -R -Y${dY}i -X${dX}i -O -N -F+jl+f12p,Helvetica,black >> $outps";
 
 #--------------------------
 
@@ -540,14 +540,15 @@ $only_pol = 0;
             #printf "*** DEBUG j $j x $x\n"; 
             $com1=8-2*$j; $com2=$com1+1;
             if ($aa[7*$j+2]>0) {
-                printf STDERR "cap_plt.pl. DEBUG x %f j %d x0[j] %f TEST %f\n", $x, $j, $x0[$j], $x0[$j]+ $aa[7*$j+5] ;
+                #printf STDERR "cap_plt.pl. DEBUG x %f j %d x0[j] %f TEST %f\n", $x, $j, $x0[$j], $x0[$j]+ $aa[7*$j+5] ;
                 # <saclist> contains SAC files + plotting parameters. See above for formatting instructions. 
                 #           Each record has 1, 3 or 4 items:  <filename> [<X> <Y> [<pen>]].
                 # NOTE the wiggles already are pre-aligned here
                 #printf PLT "%s %f %f 5/0/0/0  \n",$nam.$com1,$x,$nn-$i-2;   # data (black)
                 #printf PLT "%s %f %f 3/255/0/0\n",$nam.$com2,$x,$nn-$i-2;   # synthetic (red)
-                printf PLT "%s %f %f 0.8,black\n", $nam.$com1,$x-$aa[7*$j+5],$nn-$i-2;  # data (black)
-                printf PLT "%s %f %f 0.5,red\n",   $nam.$com2,$x,$nn-$i-2;  # synthetic (red)
+                printf PLT "%s %f %f 1.0,black\n", $nam.$com1,$x-$aa[7*$j+5],$nn-$i-2;  # data (black)
+                #printf PLT "%s %f %f 0.5,red\n",   $nam.$com2,$x,$nn-$i-2;  # synthetic (red)              # 2022-05-04 ORIGINAL
+                printf PLT "%s %f %f 0.9,red\n",   $nam.$com2,$x-$aa[7*$j+5],$nn-$i-2;  # synthetic (red)   # 2022-05-04 UPDATE: Include `aa` shift in the synthetics. Why was this was not done originally (GMT 4.5.15-UAF)?
                 #printf STDERR "%s OBS %f %f 0.8,black\n", $nam.$com1,$x,$nn-$i-2;  # data (black)
                 #printf STDERR "%s SYN %f %f 0.5,red\n",   $nam.$com2,$x,$nn-$i-2;  # synthetic (red)
                 #printf stderr "ind 7*$j+2 aa $aa[7*$j+2] $x0[$j]\n";
