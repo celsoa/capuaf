@@ -21,6 +21,13 @@ $caprun = $ENV{CAPRUN};                    # run directory
 require "$caphome/cap_plt.pl";             # include plot script
 require "$caphome/sub_read_parameter_file.pl";  #  read parameter file
 
+# rename output dir to include time. Options: 
+# 1. propagate into CAP.c. 
+# 2: simply rename capc's output_dir into this dir.
+($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+$runtime1 = sprintf("%4d-%02d-%02d", $year+1900, $mon, $mday);
+$runtime2 = sprintf("%4d-%02d-%02dT%02d.%02d.%02d", $year+1900, $mon, $mday, $hour, $min, $sec);
+
 #================defaults======================================
 $cmd = "cap";
 
@@ -46,8 +53,8 @@ $fmt_flag="false";     # use 'fmt' flag for full moment tensor search outputs
 
 # plotting
 $plot = 0;             # to generate plots (waveform misfit, beachballs)
-$amplify_P = 1;        # amplitude scaling for P wave
-$amplify_S = 2;        # amplitude scaling for Surf wave
+$ampbody_input = 1;        # amplitude scaling for P wave
+$ampsurf_input = 2;        # amplitude scaling for Surf wave
 $spib = 40;            # sec per inch, body waves
 $spis = 45;            # sec per inch, surface waves
 $keep = 0;             # keep synthetics
@@ -434,12 +441,12 @@ foreach (grep(/^-/,@ARGV)) {
      $cmd = "cat";
    } elsif ($opt eq "P") {
      $plot = 1;
-     $amplify_P = $value[0] if $#value >= 0;
+     $ampbody_input = $value[0] if $#value >= 0;
      $spib = $value[1] if $value[1] > 0;
      $spis = $value[2] if $value[2] > 0;
      $keep = 1 if $#value > 2;
    } elsif ($opt eq "p") {
-     $amplify_S = $value[0];
+     $ampsurf_input = $value[0];
    } elsif ($opt eq "Q") {
      $nof = $value[0];
    } elsif ($opt eq "R") {
@@ -891,10 +898,10 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
             @dum = split('_', $md_dep);  # split mdl string
             $outfile = sprintf("%s_%s_%03d.out", @event, $model, int($dep));
             open(my $out,'>>',$outfile);
-            say $out "INPUT_PAR $md_dep P_win $tmax_body S_win $tmax_surf P $amplify_P p $amplify_S NCOM $ncom spiB $spib spiS $spis $filterBand FMT $fmt_flag";
+            say $out "INPUT_PAR $md_dep P_win $tmax_body S_win $tmax_surf P $ampbody_input p $ampsurf_input NCOM $ncom spiB $spib spiS $spis $filterBand FMT $fmt_flag";
             print STDERR ">> cap.pl: spis $spis S_win $tmax_surf \n";
 
-            &plot($md_dep, $tmax_body, $tmax_surf, $amplify_P, $amplify_S, $ncom, $spib, $spis, $filterBand, $fmt_flag, @event, $model, $dep, $dura, $riseTime, $pol_wt);
+            &plot($md_dep, $tmax_body, $tmax_surf, $ampbody_input, $ampsurf_input, $ncom, $spib, $spis, $filterBand, $fmt_flag, @event, $model, $dep, $dura, $riseTime, $pol_wt);
             unlink(<${md_dep}_*.?>) unless $keep;
             chdir("../");
             print STDERR "cap.pl: Inversion and plotting completed.\n";
@@ -903,7 +910,19 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
         }
     }
 }
-    # TODO 2022-05-04 rename output dir to include time. Options: 1. propagate into CAP.c. 2: simply rename capc's output_dir into this dir.
-    ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
-    printf("%4d-%02d-%02dT%02d:%02d:%02d\n", $year+1900, $mon, $mday, $hour, $min, $sec);
+# rename run command and output dir
+(my $OUTDIR      = sprintf("fmtout_@{event}_${model}_${dep}_runtime_${runtime1}"));
+(my $run_command = sprintf("fmtrun_@{event}_${model}_${dep}_runtime_${runtime2}")); # append the following to supress newline: ``=~ s/\s//g;``
+open(INP,">$run_command");
+print INP "cap.pl ";
+foreach $argnum (0 .. $#ARGV) {
+    print INP "@ARGV[$argnum] ";
+}
+print INP "\n";
+close(INP);
+system("chmod +x $run_command");
+system("mv", "OUTPUT_DIR", "$OUTDIR");
+system("mv", "$inp_cmd", $run_command);
+print STDERR "cap.pl: Output dir: $OUTDIR\n";
+
 exit(0);
