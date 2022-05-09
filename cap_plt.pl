@@ -3,11 +3,11 @@ use List::Util qw[min max];
 
 sub plot {
     print STDERR "\n============================\n";
-    print STDERR "cap_plt: begin plot results.\n";
+    print STDERR "cap_plt: Begin plotting results ...\n";
     print STDERR "============================\n";
 
-#  local($mdl, $tmax_body, $tmax_surf $amplify_P, $num_com, $spis) = @_; # original
-  local($mdl, $tmax_body, $tmax_surf, $amplify_P, $amplify_S, $num_com, $spib, $spis, $filterBand, $fmt_flag, $evid, $model, $depth, $dura, $riseTime, $pol_wt) = @_;
+#  local($mdl, $tmax_body, $tmax_surf $ampbody_input, $num_com, $spis) = @_; # original
+  local($mdl, $tmax_body, $tmax_surf, $ampbody_input, $ampsurf_input, $num_com, $spib, $spis, $filterBand, $fmt_flag, $evid, $model, $depth, $dura, $riseTime, $pol_wt) = @_;
   local($nn,$tt,$plt1,$plt2,$plt3,$plt4,$i,$nam,$com1,$com2,$j,$x,$y,@aa,$capout,@name,@aztk);
 
 # set this =1 if you want to plot time windows that have been excluded
@@ -33,6 +33,12 @@ $only_pol = 0;
   @dum = split('_', $mdl);  # split mdl string
   $ftag=sprintf("%s_%s_%03d", $evid, $model, int($depth));
   $capout_file = sprintf("%s.out", $ftag);
+
+#  $outps = "$mdl.ps";   # original
+  #$outps = sprintf("%s_%s_%03d.ps", $evid, $model, int($depth)); # reformatted filename
+  #$outps = sprintf("%s_%s_%03d_fmt.ps", $evid, $model, ,int($depth)) if $fmt_flag eq "true";
+  $outps = sprintf("${ftag}.ps");
+  $outps = sprintf("${ftag}_fmt.ps") if $fmt_flag eq "true";
 
   # read in the output file results
 #  open(FFF,"$mdl.out"); # original
@@ -100,30 +106,121 @@ $only_pol = 0;
   #$xoffset="3.0";
   $xoffset=$widthb;
 
+  #===========================================================================================
+  # 2022-05-09. THIS SECTION DEALS WITH SCALING AMPLITUDES FOR BODY AND SURF WAVEFORMS.
+  # This was a little involved because originally there was a feature (bug?) that allowed to plot all wiggles with the same amplitude.
+  # This scaling was used for the Uturuncu paper and needed some fiddling.
+  # Then I adapted pssac through various GMT revisions until GMT6 
+  # TODO: replace all this with obspy.
+  #
+  # 2022-05-09 disable the following sections. save for reference Uturuncu paper.
   # KEY: set amplitude scaling for seismograms
-  if ($amplify_P > 0.)    {$stam = "$amplify_P/-1";} 
-  else                    {$stam = -$amplify_P;} # original line (with pssac, not pssac2)
-  if ($amplify_P == 0x0)  {$amp = $amplify_P;}
-  else                    {$amp = $amplify_P/$amplify_S;}
-  $stams = "$amp/0.";
-  $stamb = "$amplify_P/0.";                                   # overwrite for absolute (to match default plotting)
+  # if ($ampbody_input > 0.)   {$stam = "$ampbody_input/-1";}                                      # 2022-05-09 disabled. not used anywhere else in the code.
+  # else                       {$stam = -$ampbody_input;} # original line (with pssac, not pssac2) # 2022-05-09 disabled. not used anywhere else in the code.
+  # if ($ampbody_input == 0x0) {$amp = $ampbody_input;}                 # Uturuncu paper to scale all wiggles equally.
+  # else                       {$amp = $ampbody_input/$ampsurf_input;}  # Uturuncu paper to scale all wiggles equally.
+  # $ampsurf_flag = "$amp/0.";
+  # $ampbody_flag = "$ampbody_input/0."; # overwrite for absolute (to match default plotting) # 2022-05-09 disabled. Uturuncu paper to scale all wiggles equally.
+  # print "\namplitude scaling ampbody_input = $ampbody_input";
+  # #print "\npssac2 amplitude scaling stam = $stam\n";    # 2022-05-09 disabled. not used anywhere else in the code.
+  # print "\n*** DEBUG amplitude scaling ampsurf_flag $ampsurf_flag, ampbody_flag $ampbody_flag, ampbody_input $ampbody_input, amp $amp ***\n";
 
-  print "\namplitude scaling amplify_P = $amplify_P";
-  print "\npssac2 amplitude scaling stam = $stam\n";
-  print "\n*** DEBUG amplitude scaling stams $stams, stamb $stamb, amplify_P $amplify_P, amp $amp ***\n";
-#  $outps = "$mdl.ps";   # original
-  #$outps = sprintf("%s_%s_%03d.ps", $evid, $model, int($depth)); # reformatted filename
-  #$outps = sprintf("%s_%s_%03d_fmt.ps", $evid, $model, ,int($depth)) if $fmt_flag eq "true";
-  $outps = sprintf("${ftag}.ps");
-  $outps = sprintf("${ftag}_fmt.ps") if $fmt_flag eq "true";
+  # print "Max amplitude body waves $ampmax_body \n";
+  # print "Max amplitude surf waves $ampmax_surf \n";
+##---------------------------------------
+# Three options for plotting (and scaling) the waveforms using -P flag (body waves) and -p flag (surface wave)
+# Default for both -P and -p flag is 1 (i.e. option 1 in the following comments and using the scaling_factor=1)
+# 1. Normalize by maximum body and surface amplitude separatetly, then apply a scaling factor
+# 2. Normalized plotting -- data and synthetics have same maximum amplitude for all waveforms
+# 3. The default plotting -- scale waveforms by given amplitude
+  #----------------------------------------------------------
+  # UPDATE 2021-03-29 
+  #
+  # pssac2 amplitude scaling (GMT4/5?)
+  # -M vertical scaling in sacfile_unit/MEASURE_UNIT = size<required> 
+  #           size: each trace will normalized to size (in MEASURE_UNIT)
+  #               scale =  (1/size) * [data(max) - data(min)]
+  #           size/alpha: plot absolute amplitude multiplied by (1/size)*r^alpha
+  #               where r is the distance range in km across surface
+  #               specifying alpha = 0.0 will give absolute amplitudes
+  #               scale = (1/size) * r^alpha
+  #           size/s: plot absolute amplitude multiplied by (1/size)*sqrt(sin(gcarc))
+  #               where gcarc is the distance in degrees.
+  #               scale = (1/size) * sqrt(sin(gcarc))
+  #               
+  # PSSAC version GMT 6.1.0
+  # Flag -M<size>/<alpha>
+  # -M Vertical scaling
+  #    <size>: each trace will scaled to <size>. The default unit is PROJ_LENGTH_UNIT.
+  #       The scale factor is defined as yscale = size*(north-south)/(depmax-depmin)/map_height 
+  #    <size>/<alpha>: 
+  #       <alpha> < 0, use the same scaling factor for all traces. The scaling factor will scale the first trace to <size>[<u>].
+  #       <alpha> = 0, multiply all traces by <size>. No unit is allowed.  (nb 2021-03-31 "specifying alpha = 0.0 will give absolute amplitudes", see above)
+  #
+  # PSSAC version GMT  6.3
+  #   -M<size>/<alpha>
+  #    Vertical scaling, with each trace will scaled to <size>. 
+  #    The default unit is PROJ_LENGTH_UNIT. 
+  #    The scale factor is defined as yscale = size*(north-south)/(depmax-depmin)/map_height. 
+  #    Specify <alpha>:
+  #    • <alpha> < 0, use the same scaling factor for all traces. The scaling factor will scale the first trace to <size>[<u>].
+  #    • <alpha> = 0, multiply all traces by <size>. No unit is allowed.
+  #    • <alpha> > 0, multiply all traces by size*r^alpha, r is the distance range in km.
+  # 
+  #     NB 2022-05-03
+  #         want <size> to anything reasonable (1? = no scaling)
+  #         want <alpha> negative to scale all by the same amount. unless want different plotting.
+  #----------------------------------------------------------
+
+  #      ##OPT 1. scale by the maximum body wave amplitude ($ampmax_body) and then scale by $ampbody_input factor (-P flag)
+  #      ##OPT 2. Normalized plotting (using the pssac2 bug) -- data and synthetics have same maximum amplitude
+  #      ##OPT 3. default plotting (FUTURE: find a better way to differentiate b/w exponents and rational number) -- scale by given amplitude $ampbody_input  (-P flag)
+  #      ## -P flag. body waves
+  #      #if    ($ampbody_input>=0.1) {$ampscale_body = $ampmax_body/$ampbody_input;}
+  #      #elsif ($ampbody_input==0)   {$ampscale_body = "0.5e+0.5";}
+  #      #else                    {$ampscale_body = $ampbody_input;}
+  #      ## -p flag. surface waves
+  #      #if    ($ampsurf_input>=0.1){$ampscale_surf = $ampmax_surf/$ampsurf_input;}
+  #      #elsif ($ampsurf_input==0)  {$ampscale_surf = "0.5e+0.5";}
+  #      #else                   {$ampscale_surf = $ampsurf_input;}
+  #      #$ampbody_flag = "$ampscale_body/0.";        # set the parameters
+  #      #$ampsurf_flag = "$ampscale_surf/0.";
+  #      ## 2021-03-29 update for pssac gmt6
+  #      # scale BODY_amp. flag -P. -M<size>/<alpha>
+  #      # scale SURF_amp. flag -p. -M<size>/<alpha>
+  #      # <size>: each trace will scaled to <size>. The default unit is PROJ_LENGTH_UNIT.
+  #      # alpha < 0 use the same scaling factor for all traces. The scaling factor will scale the first trace to <size>[<u>]
+  #      # alpha = 0 multiply all traces by <size>. No unit is allowed.  (nb 2021-03-31 from above: specifying alpha = 0.0 will give absolute amplitudes)
+  #      # alpha > 0 multiply all traces by size*r^alpha, r is the distance range in km
+  #      $ampscale_body = "1/-1";
+  #      #$ampscale_body = "3000.0/0";
+  #      #$ampscale_body = "30/1";
+  #      $ampscale_body = "0.1/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
+  #      $ampscale_body = "0.2/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
+  #      #$ampscale_body = "0.5/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
+  #      #$ampscale_body = "0.9/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
+  #      $ampscale_surf = "1/-1";   
+  #      $ampscale_surf = "0.5/-1"; 
+  #      #$ampscale_surf = "50/0.0";
+  #      #$ampscale_surf = "1/1";   
+  #      #
+  ## 2022-05-03 TEST AGAIN GMT 6.3. want: <anything/negative>
+  $ampscale_body = "1/-1";
+  $ampscale_surf = "1/-1";
+
+  print "pssac norm BODY -M<size/alpha>: $ampscale_body \n";
+  print "pssac norm SURF -M<size/alpha>: $ampscale_surf \n";
+  print "\n*** DEBUG amplitude scaling ampsurf_flag $ampsurf_flag, ampbody_flag $ampbody_flag, ampbody_input $ampbody_input, amp $amp ***\n";
+  # 2022-05-09 END REVISED SECTION THAT DEALS WITH SCALING SEISMOGRAM AMPLITUDES
+  #===========================================================================================
 
   # (1) plot cut seismograms with scaled amplitudes (first command: no -O appears)
   $tscale_x = 0.55;
   $tscale_y = $pheight_in - 2.0;
-  #$plt1b = "| pssac2 -JX${widthb}i/${height}i -L${spib} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_body/0/$nn -Y0.2i -Ent-2 -M$stamb -K -P >> $outps";
-  #$plt1s = "| pssac2 -JX${widths}i/${height}i -L${spis} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_surf/0/$nn -X${xoffset}i -Ent-2 -M$stams -O -K -P >> $outps";
-  #$plt1b = "| pssac -JX${widthb}i/${height}i -S${spib} -M$stamb -R0/$twin_body/0/$nn               -Y0.2i      -K -P -V >> $outps";
-  #$plt1s = "| pssac -JX${widths}i/${height}i -S${spis} -M$stams -R0/$twin_surf/0/$nn -X${xoffset}i          -O -K -P -V >> $outps";
+  #$plt1b = "| pssac2 -JX${widthb}i/${height}i -L${spib} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_body/0/$nn -Y0.2i -Ent-2 -M$ampbody_flag -K -P >> $outps";
+  #$plt1s = "| pssac2 -JX${widths}i/${height}i -L${spis} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_surf/0/$nn -X${xoffset}i -Ent-2 -M$ampsurf_flag -O -K -P >> $outps";
+  #$plt1b = "| pssac -JX${widthb}i/${height}i -S${spib} -M$ampbody_flag -R0/$twin_body/0/$nn               -Y0.2i      -K -P -V >> $outps";
+  #$plt1s = "| pssac -JX${widths}i/${height}i -S${spis} -M$ampsurf_flag -R0/$twin_surf/0/$nn -X${xoffset}i          -O -K -P -V >> $outps";
   $plt1b = "| gmt pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
   $plt1s = "| gmt pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i           -O -K -P >> $outps";
 
@@ -238,7 +335,6 @@ $only_pol = 0;
   print "---------------------------------\n";
   print "@capout";
   print "---------------------------------\n";
-  print "END SUMMARY\n";
 
 # get strike dip and rake
   $stk = @meca[0];
@@ -256,11 +352,11 @@ $only_pol = 0;
       #     |                            |              |     |  |    |     |        |        |   |    |   |     |    |        |        |   |        |     |    |        |        |   |
       # 20210314141526689.II.BORG.00.BH  88.1/-0.00 0   0.00  0  0.00 -0.00 3.03e-05 3.04e-05 0   0.00 83  0.00  0.24 1.93e-05 1.51e-05 1   3.83 99  1.90  0.06 2.28e-03 2.14e-03 1   5.46 98  1.90 -0.09 2.08e-03 2.28e-03 1   9.48 99  3.05  0.23 3.67e-03 2.92e-03 0  -0.35
     @aa = split;
-    if ($aa[7] >$ampmax_body && $aa[2] !=0){$ampmax_body=$aa[7] ;} # max amp body vertical. pssac plotting -P flag
-    if ($aa[14]>$ampmax_body && $aa[9] !=0){$ampmax_body=$aa[14];} # max amp body radial
-    if ($aa[21]>$ampmax_surf && $aa[16]!=0){$ampmax_surf=$aa[21];} # max amp surf vertical
-    if ($aa[28]>$ampmax_surf && $aa[23]!=0){$ampmax_surf=$aa[28];} # max amp surf radial
-    if ($aa[35]>$ampmax_surf && $aa[30]!=0){$ampmax_surf=$aa[35];} # max amp surf transverse
+    if ($aa[7] >$ampmax_body && $aa[2] !=0){$ampmax_body=$aa[7] ;} # maxamp body vertical. pssac plotting -P flag
+    if ($aa[14]>$ampmax_body && $aa[9] !=0){$ampmax_body=$aa[14];} # maxamp body radial
+    if ($aa[21]>$ampmax_surf && $aa[16]!=0){$ampmax_surf=$aa[21];} # maxamp surf vertical
+    if ($aa[28]>$ampmax_surf && $aa[23]!=0){$ampmax_surf=$aa[28];} # maxamp surf radial
+    if ($aa[35]>$ampmax_surf && $aa[30]!=0){$ampmax_surf=$aa[35];} # maxamp surf transverse
     $ifmp[$i] = $aa[37];  # first-motion polarity (input - data)
     $ifmpt[$i] = $aa[38];  # first-motion polarity (theoretical)
     $stnm = $aa[0];                              # station name
@@ -305,102 +401,11 @@ $only_pol = 0;
   }
 #--------------------------compute pssac plotting info (scaling factor ampmax_body)
   print "============================\n";
-  print "Begin plotting ...\n";
-  print "============================\n";
-
-  print "Max amplitude body waves $ampmax_body \n";
-  print "Max amplitude surf waves $ampmax_surf \n";
-##---------------------------------------
-# Three options for plotting (and scaling) the waveforms using -P flag (body waves) and -p flag (surface wave)
-# Default for both -P and -p flag is 1 (i.e. option 1 in the following comments and using the scaling_factor=1)
-# 1. Normalize by maximum body and surface amplitude separatetly, then apply a scaling factor
-# 2. Normalized plotting -- data and synthetics have same maximum amplitude for all waveforms
-# 3. The default plotting -- scale waveforms by given amplitude
-  #----------------------------------------------------------
-  # UPDATE 2021-03-29 
-  #
-  # pssac2 amplitude scaling (GMT4/5?)
-  # -M vertical scaling in sacfile_unit/MEASURE_UNIT = size<required> 
-  #           size: each trace will normalized to size (in MEASURE_UNIT)
-  #               scale =  (1/size) * [data(max) - data(min)]
-  #           size/alpha: plot absolute amplitude multiplied by (1/size)*r^alpha
-  #               where r is the distance range in km across surface
-  #               specifying alpha = 0.0 will give absolute amplitudes
-  #               scale = (1/size) * r^alpha
-  #           size/s: plot absolute amplitude multiplied by (1/size)*sqrt(sin(gcarc))
-  #               where gcarc is the distance in degrees.
-  #               scale = (1/size) * sqrt(sin(gcarc))
-  #               
-  # PSSAC version GMT 6.1.0
-  # Flag -M<size>/<alpha>
-  # -M Vertical scaling
-  #    <size>: each trace will scaled to <size>. The default unit is PROJ_LENGTH_UNIT.
-  #       The scale factor is defined as yscale = size*(north-south)/(depmax-depmin)/map_height 
-  #    <size>/<alpha>: 
-  #       <alpha> < 0, use the same scaling factor for all traces. The scaling factor will scale the first trace to <size>[<u>].
-  #       <alpha> = 0, multiply all traces by <size>. No unit is allowed.  (nb 2021-03-31 "specifying alpha = 0.0 will give absolute amplitudes", see above)
-  #
-  # PSSAC version GMT  6.3
-  #   -M<size>/<alpha>
-  #    Vertical scaling, with each trace will scaled to <size>. 
-  #    The default unit is PROJ_LENGTH_UNIT. 
-  #    The scale factor is defined as yscale = size*(north-south)/(depmax-depmin)/map_height. 
-  #    Specify <alpha>:
-  #    • <alpha> < 0, use the same scaling factor for all traces. The scaling factor will scale the first trace to <size>[<u>].
-  #    • <alpha> = 0, multiply all traces by <size>. No unit is allowed.
-  #    • <alpha> > 0, multiply all traces by size*r^alpha, r is the distance range in km.
-  # 
-  #     NB 2022-05-03
-  #         want <size> to anything reasonable (1? = no scaling)
-  #         want <alpha> negative to scale all by the same amount. unless want different plotting.
-  #----------------------------------------------------------
-
-  ##OPT 1. scale by the maximum body wave amplitude ($ampmax_body) and then scale by $amplify_P factor (-P flag)
-  ##OPT 2. Normalized plotting (using the pssac2 bug) -- data and synthetics have same maximum amplitude
-  ##OPT 3. default plotting (FUTURE: find a better way to differentiate b/w exponents and rational number) -- scale by given amplitude $amplify_P  (-P flag)
-  ## -P flag. body waves
-  #if    ($amplify_P>=0.1) {$ampscale_body = $ampmax_body/$amplify_P;}
-  #elsif ($amplify_P==0)   {$ampscale_body = "0.5e+0.5";}
-  #else                    {$ampscale_body = $amplify_P;}
-  ## -p flag. surface waves
-  #if    ($amplify_S>=0.1){$ampscale_surf = $ampmax_surf/$amplify_S;}
-  #elsif ($amplify_S==0)  {$ampscale_surf = "0.5e+0.5";}
-  #else                   {$ampscale_surf = $amplify_S;}
-  #$stamb = "$ampscale_body/0.";        # set the parameters
-  #$stams = "$ampscale_surf/0.";
-  ## 2021-03-29 update for pssac gmt6
-  # scale BODY amp. flag -P. -M<size>/<alpha>
-  # scale SURF amp. flag -p. -M<size>/<alpha>
-  # <size>: each trace will scaled to <size>. The default unit is PROJ_LENGTH_UNIT.
-  # alpha < 0 use the same scaling factor for all traces. The scaling factor will scale the first trace to <size>[<u>]
-  # alpha = 0 multiply all traces by <size>. No unit is allowed.  (nb 2021-03-31 from above: specifying alpha = 0.0 will give absolute amplitudes)
-  # alpha > 0 multiply all traces by size*r^alpha, r is the distance range in km
-  $ampscale_body = "1/-1";
-  #$ampscale_body = "3000.0/0";
-  #$ampscale_body = "30/1";
-  $ampscale_body = "0.1/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
-  $ampscale_body = "0.2/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
-  #$ampscale_body = "0.5/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
-  #$ampscale_body = "0.9/-1"; # SIMPLEST FLAG. USE. 2021-05-20. Nepal event
-  $ampscale_surf = "1/-1";   
-  $ampscale_surf = "0.5/-1"; 
-  #$ampscale_surf = "50/0.0";
-  #$ampscale_surf = "1/1";   
-  #
-  # 2022-05-03 TEST AGAIN GMT 6.3. want: <anything/negative>
-  $ampscale_body = "1/-1";
-  $ampscale_surf = "1/-1";
-
-  print "pssac norm BODY -M<size/alpha>: $ampscale_body \n";
-  print "pssac norm SURF -M<size/alpha>: $ampscale_surf \n";
-  print "\n*** DEBUG amplitude scaling stams $stams stamb $stamb amplify_P $amplify_P amp $amp ***\n";
-  #-----------------------------------------------------------
-  print "Plotting waveforms ... \n";
-  #-----------------------------------------------------------
+  print "Plotting waveforms + best mechanism ...\n";
 #---------------------------------------
   # 20151025 cralvizuri - uncomment this command to normalize surf waves
   #                       This is for figures in Uturuncu FMT paper
-  #$stams = $stamb;
+  #$ampsurf_flag = $ampbody_flag;
 
   # 2021-04-02 calvizuri -- update for pssac GMT6
   # pssac2 GMT5
@@ -422,8 +427,8 @@ $only_pol = 0;
   # pssac GMT 6.3 
   # -R<west>/<east>/<south>/<north>[+r]
   #
-  #$plt1b = "| pssac2 -JX${widthb}i/${height}i -L${spib} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_body/0/$nn -Y0.2i -Ent-2 -M$stamb -K -P >> $outps";
-  #$plt1s = "| pssac2 -JX${widths}i/${height}i -L${spis} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_surf/0/$nn -X${xoffset}i -Ent-2 -M$stams -O -K -P >> $outps";
+  #$plt1b = "| pssac2 -JX${widthb}i/${height}i -L${spib} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_body/0/$nn -Y0.2i -Ent-2 -M$ampbody_flag -K -P >> $outps";
+  #$plt1s = "| pssac2 -JX${widths}i/${height}i -L${spis} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_surf/0/$nn -X${xoffset}i -Ent-2 -M$ampsurf_flag -O -K -P >> $outps";
   #$plt1b = "| pssac -JX${widthb}i/${height}i -S${spib} -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
   #$plt1s = "| pssac -JX${widths}i/${height}i -S${spis} -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i           -O -K -P >> $outps";
   $plt1b = "| gmt pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
@@ -741,7 +746,9 @@ $only_pol = 0;
 #    }
     close(PLT);
 
-    # plot station azimuths beachballs (see staz above)
+    #-----------------------------------------------------------
+    print "Plotting station data, labels azimuths, weights, ...\n"; # (see staz above)
+    #-----------------------------------------------------------
     #open(PLT, $plt4b);
     #foreach (@staz) {
     #  printf PLT;
@@ -807,6 +814,7 @@ $only_pol = 0;
     #printf STDERR "$x $y 12 0 0 $filterBand $duration y $y tgap $tgap \n";  # 20120719 - filter bands
     #-----------------------------------------------------------
     ## TRY 3. works. Original code messy. Needed: -F+jl to justify, plus x y. M flag not needed. weird.
+    print "Plotting header labels ...\n";
     open(PLT, $plt4_5);
     # > 0 -0.5 13p 3i l
     printf PLT "0.0 -0.0 Event $evid Model $model Depth $depth\n";
@@ -817,7 +825,8 @@ $only_pol = 0;
 
     #-----------------------------------------------------------
 
-  print STDERR "Done plotting waveforms + best mechanism.\n";
+  print "Done.\n";
+  print "============================\n";
   }  # while (@capout) {
 
   #---------------------------------
@@ -866,7 +875,7 @@ $only_pol = 0;
     close(XPLTE);
     close(XPLTF);
 
-# Section for plotting azimuths and station name
+    print "Plotting azimuths and station name ...\n";
 if ($only_pol == 0) {
     # plot station azimuths beachballs (see staz above)
     open(XPLT, $xplt4b);
@@ -908,7 +917,7 @@ if ($only_pol == 0) {
     }
     close(XPLT);
 
-    # TITLE
+    print "Plotting title ...\n";
     $x = -1; 
     $y = 0;
     open(XPLT, $xplt6);
@@ -919,7 +928,8 @@ if ($only_pol == 0) {
     close(XPLT);
 
 }
-  print STDERR "Done plotting big beachball.\n";
+  print STDERR "Done.\n";
+  print "============================\n";
 }
 #---------------------------------
   print "Summary results: @meca\n\n";
