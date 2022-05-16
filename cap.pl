@@ -153,66 +153,17 @@ $dep_inc = 0;
 
 # command line input, [] means optional, see () for default value
 $usage = 
-" ===== CAP source inversion using seismic waveforms ====
-	Ref: Zhu and Helmberger, 1996, BSSA 86, 1645-1641
-
-  Data preparation:
-     Put all three-component waveforms station.[r,t,z] of the event in
-  a single directory named with the event ID. The data should be velocity
-  in cm/s or displacement in cm in the SAC format, with the reference
-  time set at the origin time and epicentral distance and azimuth
-  set in the SAC header. There should be another file called $weight
-  in the same directory, in the following format:
-        station_name    dist    w1 w2 w3 w4 w5  tp tp_w ts ts_w ti_r [ti_s]
-  where dist specifies the names of Green functions (dist.grn.?) to be used.
-  w1 to w5 are the weights for 5 segments of waveforms: PnlZ, PnlR, Z, R, T.
-  tp is first P arrival time if it's set to a positive value. tp_w is the body wave window.
-  ts is the arrival time for surface waves. 
-  ts_w is the surface wave window. 
-  ti_r and ti_s are the initial time shift for the surface waves (rayleigh, love). 
-  Positive shift means that the data is delayed w.r.t. the model.
-  If w2 is set to -1, it indicates that the station is at teleseismic distances and only the P (PnlZ) and SH (T) are used.
-  In this case, ts is the S arrival time when it is positive.
-
-  The Greens function library:
-     The Greens functions are computed using FK, named as xxx.grn.[0-8] where
-  xxx is the distance. All Greens functions from one source depth are placed
-  in a single directory named as model_depth. They are in SAC format with
-  two time marks set: t1 for the first P arrival and t2 for the first S arrival.
-  If first-motion data are to be used in the inversion, the Greens functions
-  need to have user1 and user2 set as the P and S take-off angles (in degrees from down).
-
-  Time window determination:
-     The inversion breaks the whole record into two windows, the Pnl window
-  and the surface wave window. These windows are determined in following way:
-    1) If the SAC head has time mark t1, t2 set, the code will use them for
-       the Pnl window. The same is true for the surface wave window (using t3 and t4).
-    Otherwise,
-    2) If positive apparent velocities are given to the code (see -V below), it will use
-       them to calculate the time windows:
-        t1 = dist/vp        - 0.3*tmax_body
-        t2 = ts             + 0.2*tmax_body
-        t3 = dist/vLove     - 0.3*tmax_surf
-        t4 = dist/vRayleigh + 0.7*tmax_surf
-    Otherwise,
-    3) Using the tp, ts in the Green function header
-        t1 = tp - 0.2*tmax_body
-        t2 = t1 +     tmax_body
-        t3 = ts - 0.3*tmax_surf
-        t4 = t3 +     tmax_surf
-    Here tmax_body, tmax_surf are the maximum lengths for the Pnl and surface waves windows
-    (see the -T options below).
-
-=====================================================================================================
-  Usage: cap.pl -Mmodel_depth/mag [-A<dep_min/dep_max/dep_inc>] [-C<f1_pnl/f2_pnl/f1_sw/f2_sw>]
-                  [-D<w1/p1/p2>] [-F<thr>] [-Ggreen] [-Hdt] 
-                  [-I<nsol> OR -I<Nv/Nw/Nstrike/Ndip/Nrake>]
-                  [-k1 (old grid setup)] [-L<tau>]
-                  [-M$model_$dep] [-m$mw OR -m<mw1>/<mw2>/<dmw> ] [-N<n>]
-                  [-O] [-P[<Yscale[/Xscale_b[/Xscale_s[/k]]]]>] [-Qnof]
-                  [-R<v0/w0/strike0/dip0/rake0> OR -R<v1/v2/w1/w1/strike1/strike2/dip1/dip2/rake1/rake2>] 
-                  [-S<s1/s2[/tie]>] [-T<tmax_body/tmax_surf>]
-                  [-Udirct] [-V<vp/vl/vr>] [-Wi] [-Y<norm>] [-Zstring] event_dirs
+"
+Usage: cap.pl -Mmodel_depth/mag 
+    [-A<dep_min/dep_max/dep_inc>] [-C<f1_pnl/f2_pnl/f1_sw/f2_sw>]
+    [-D<w1/p1/p2>] [-F<thr>] [-Ggreen] [-Hdt] 
+    [-I<nsol> OR -I<Nv/Nw/Nstrike/Ndip/Nrake>]
+    [-k1 (old grid setup)] [-L<tau>]
+    [-M$model_$dep] [-m$mw OR -m<mw1>/<mw2>/<dmw> ] [-N<n>]
+    [-O] [-P[<Yscale[/Xscale_b[/Xscale_s[/k]]]]>] [-Qnof]
+    [-R<v0/w0/strike0/dip0/rake0> OR -R<v1/v2/w1/w1/strike1/strike2/dip1/dip2/rake1/rake2>] 
+    [-S<s1/s2[/tie]>] [-T<tmax_body/tmax_surf>]
+    [-Udirct] [-V<vp/vl/vr>] [-Wi] [-Y<norm>] [-Zstring] event_dirs
 
     -A  run cap for different depths. (dep_min/dep_max/dep_inc).
     -B  apply same surface wave static shift to all stations. When used static_shift from weight file (last column) is ignored.
@@ -279,70 +230,7 @@ $usage =
     -Y  specify norm (1 - L1 norm; 2 - L2 norm)
     -Z  specify a different weight file name ($weight).
 
------------------------------------------------------------------------------------------------------
-Weight file description:
-Column No:        1                2          3           4            5            6         7             8                   9               10                  11               12
-Description:   Station_Name    Distance   PV_weight   PR_weight    SV_weight   SR_weight   SH_weight   P_arrival_time    P_window_length   S_arrival_time    S_window_length   shift_synthetics
-
-Convention: Postive time-shift means synthetics is arriving earlier (faster velocity model) and it needs to be shifted in the positive direction in order to match it with the data.
-
-=====================================================================================================
-EXAMPLE COMMANDS
-The following commands find the best focal mechanism and moment magnitude for
-the 2008/4/18 Southern Illinois earthquake 20080418093700 using the central US
-crustal velocity model cus with the earthquake at a depth of 15 km. The
-examples assume that the Greens functions have already been computed and saved
-in $green/cus/cus_15/.
-
-EXAMPLE: RANDOM SEARCH
-Double Couple:
-> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1 -R0/0 -Y1 -I100000 20080418093700
-Full Moment Tensor:
-> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1       -Y1 -I100000 20080418093700
-
-EXAMPLE: GRID SEARCH
-Double Couple:
-> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1 -R0/0 -Y1 -I1/1/37/10/19 20080418093700
-Full Moment Tensor:
-> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1       -Y1 -I10/10/37/10/19 20080418093700
-
-EXAMPLE: DEPTH SEARCH
-To find the best focal depth, repeat the inversion for different focal depths
-either by using a for-loop or the '-A' flag
-# for loop with depths 5 to 30 km at 5-km intervals
-> for h in 5 10 15 20 25 30; do cap.pl -H0.2 -P1 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_$h/5.0 -E0 -K0 -Y2 20080418093700; done
-# same as above but using the A flag in the format -Astart/end/incr
-> cap.pl -H0.2 -P0.6 -S2/5/0 -T35/70 -F -D1/1/0.5 -C0.05/0.3/0.02/0.1 -W1 -X10 -Mcus_15 -m4.5/5.5/0.1 -R0/0 -Y1 -I1/1/37/10/19 20080418093700 -A5/30/5
-
-EXAMPLE: PLOT THE DEPTH SEARCH RESULTS
-> depth_test 20080418093700 cus
-> gv dep_20080418093700.ps
-
-RESULTS
-The examples above will produce postscript figures with waveform fits and
-beachball, and an output file (extension .out). The waveform fits are saved in
-the event directory, in file cus_15.ps (double-couple) or cus_15_fmt.ps (full
-moment tensor).
-
-OUTPUT FILE AND HEADER INFO
-The results are saved in cus_15.out, which has a header like the following:
-Event 20080418093700 Model cus_015 FM  297 86.815262    0 Mw 5.20 rms 4.547e-05   112 ERR   0   0   0 CLVD -1.89 -nan ISO  10.212961 0.00 VR 80.3 data2 1.026e-04
-# Hypocenter_sac_header elat 3.845000e+01 elon -8.789000e+01 edep 1.160000e+01
-# tensor = 7.943e+23  0.9511 -0.5865 -0.0273 -0.6243  0.0474  0.1075
-# norm L1    # Pwin 35 Swin 70    # N 8 Np 16 Ns 24
-
-HEADER INFO
-H1: event ID, model, depth. FM: focal mechanism with strike 297, dip 87, rake 0.
-H1: The values CLVD -1.89, ISO  10.212961 correspond to lune coordinates (gamma, delta) in degrees (if resolving a full moment tensor; for DC they are zero).
-H1: rms is misfit, Data2 is data norm, VR is Variance reduction.
-H2: Hypocenter location, obtained from SAC headers.
-H3: Moment tensor, format: Mxx Mxy Mxz Myy Myz Mzz (where x=North, y=East, z=Down).
-H4: Norm (L1 or L2); Window length of P (Pwin) and S (surf); Number of stations (N); Number of P windows (Np) and Number of Surf windows (Ns).
-The rest of the output includes individual station data, eg rms, cross-correlation coef., time shift of individual waveforms, etc. 
-For a detailed description see Alvizuri et al. (2018).
-
-=====================================================================================================
-
+For details about data preparation and usage, see ``readme_01_preparation.md`` and ``readme_02_usage.md``
 ";
 
 @ARGV > 0 || die $usage;
