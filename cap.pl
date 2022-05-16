@@ -288,10 +288,10 @@ Convention: Postive time-shift means synthetics is arriving earlier (faster velo
 
 =====================================================================================================
 EXAMPLE COMMANDS
-The following commands find the best focal mechanism and moment magnitude for the 
-2008/4/18 Southern Illinois earthquake 20080418093700 using the central US
-crustal velocity model cus with the earthquake at a depth of 15 km.
-The examples assume that the Greens functions have already been computed and saved
+The following commands find the best focal mechanism and moment magnitude for
+the 2008/4/18 Southern Illinois earthquake 20080418093700 using the central US
+crustal velocity model cus with the earthquake at a depth of 15 km. The
+examples assume that the Greens functions have already been computed and saved
 in $green/cus/cus_15/.
 
 EXAMPLE: RANDOM SEARCH
@@ -318,23 +318,29 @@ EXAMPLE: PLOT THE DEPTH SEARCH RESULTS
 > depth_test 20080418093700 cus
 > gv dep_20080418093700.ps
 
-EXAMPLE RESULTS:
-CAP OUTPUT FILE AND HEADER INFO
-The inversion results are saved in cus_15.out, which has the following headers:
+RESULTS
+The examples above will produce postscript figures with waveform fits and
+beachball, and an output file (extension .out). The waveform fits are saved in
+the event directory, in file cus_15.ps (double-couple) or cus_15_fmt.ps (full
+moment tensor).
+
+OUTPUT FILE AND HEADER INFO
+The results are saved in cus_15.out, which has a header like the following:
 Event 20080418093700 Model cus_015 FM  297 86.815262    0 Mw 5.20 rms 4.547e-05   112 ERR   0   0   0 CLVD -1.89 -nan ISO  10.212961 0.00 VR 80.3 data2 1.026e-04
 # Hypocenter_sac_header elat 3.845000e+01 elon -8.789000e+01 edep 1.160000e+01
 # tensor = 7.943e+23  0.9511 -0.5865 -0.0273 -0.6243  0.0474  0.1075
 # norm L1    # Pwin 35 Swin 70    # N 8 Np 16 Ns 24
 
-Here, FM if the focal mechanism with strike 297, dip 87, rake 0.
-The values gamma (CLVD) -2, delta (ISO) 10 (degrees) are lune coordinates (if resolving a full moment tensor).
-Also provided are misfit (rms), data norm (Data2) and Variance reduction (VR), and hypocenter location.
-Moment tensor format: Mxx Mxy Mxz Myy Myz Mzz (where x=North, y=East, z=Down).
-Norm info (L1 or L2); Duration of P (Pwin) and S windows; Number of stations (N); Number of P components (Np) and Number of S components (Ns).
-The rest of the files shows rms, cross-correlation coef., and time shift of individual waveforms.
+HEADER INFO
+H1: event ID, model, depth. FM: focal mechanism with strike 297, dip 87, rake 0.
+H1: The values CLVD -1.89, ISO  10.212961 correspond to lune coordinates (gamma, delta) in degrees (if resolving a full moment tensor; for DC they are zero).
+H1: rms is misfit, Data2 is data norm, VR is Variance reduction.
+H2: Hypocenter location, obtained from SAC headers.
+H3: Moment tensor, format: Mxx Mxy Mxz Myy Myz Mzz (where x=North, y=East, z=Down).
+H4: Norm (L1 or L2); Window length of P (Pwin) and S (surf); Number of stations (N); Number of P windows (Np) and Number of Surf windows (Ns).
+The rest of the output includes individual station data, eg rms, cross-correlation coef., time shift of individual waveforms, etc. 
+For a detailed description see Alvizuri et al. (2018).
 
-CAP OUTPUT FIGURES
-For the examples above, the waveform fits are plotted in the event directory, in file cus_15.ps (double-couple) or cus_15_fmt.ps (full moment tensor).
 =====================================================================================================
 
 ";
@@ -887,7 +893,7 @@ for($dep=$dep_min;$dep<=$dep_max;$dep=$dep+$dep_inc) {
         #-----save a copy of inpur command and weight file in the OUTPUT_DIR
         system("cp", $input_weight_file, './OUTPUT_DIR/weight.dat');
         system("cp", $inp_cmd, "./OUTPUT_DIR/${eve}_${model}_${dep}_caprun");
-        system("git log | head -12 > ./OUTPUT_DIR/last_2git_commits.txt");
+        #system("git log | head -12 > ./OUTPUT_DIR/last_2git_commits.txt");
 
         plot:
         if ( $plot > 0 && ($? >> 8) == 0 ) {
@@ -921,8 +927,8 @@ foreach $argnum (0 .. $#ARGV) {
 print INP "\n";
 close(INP);
 system("chmod +x $run_command");
-system("mv", "OUTPUT_DIR", "$OUTDIR");
-system("mv", "$inp_cmd", $run_command);
-print STDERR "cap.pl: Output dir: $OUTDIR\n";
+rename("$inp_cmd", $run_command);
+#rename("OUTPUT_DIR", "$OUTDIR") || die ( "Error in renaming" );
+#print STDERR "cap.pl: Output dir: $OUTDIR\n";
 
 exit(0);
