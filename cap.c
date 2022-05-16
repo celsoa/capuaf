@@ -1060,8 +1060,10 @@ int main (int argc, char **argv) {
   // output the values to the cap out file.
   tt2cmt(sol.meca.gamma, sol.meca.delta, 1.0, sol.meca.stk, sol.meca.dip, sol.meca.rak, mtensor);
 
-  // mtensor saved in output file should be in M00, M11, M22, M01, M02, M12 order. FIX HERE and then perhaps also in the cap_plt! (FUTURE WORK)
-  fprintf(f_out,"# tensor = %8.3e %7.4f %7.4f %7.4f %7.4f %7.4f %7.4f\n",
+  // NOTE mtensor is in NED format, in order M00, M11, M22, M01, M02, M12.
+  // 2022-05-10 NOTE: TT2CMT: output is in north-east-down basis (Aki-Richards) -- see sub_tt2cmt.c 
+  // 2022-05-10 NOTE: This is converted to GCMT in cap_plt.pl! perhaps output GCMT by default?
+  fprintf(f_out,"# tensor = %8.3e %7.4f %7.4f %7.4f %7.4f %7.4f %7.4f (NED)\n",
           amp*1.0e20,
           mtensor[0][0], mtensor[0][1], mtensor[0][2],
     	  mtensor[1][1], mtensor[1][2], mtensor[2][2]);
