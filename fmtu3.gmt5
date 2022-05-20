@@ -1,0 +1,675 @@
+#!/bin/bash
+#
+# Plot FMT probability on the lune and on (v, w)
+#   
+# TODO GMT5
+#   1. fix psmeca -- may require Dreger's changes. The +ISO beachballs appear swapped with -ISO (!)
+#   2. plot symbols V, P(V) and Pav
+#
+#
+# 20160904 celso alvizuri - cralvizuri@alaska.edu 
+#-----------------------------------------------------------
+
+#-----------------------------------------------------------
+# customize here
+#-----------------------------------------------------------
+
+plot_misfit_fmp="yes"      # yes/no
+ikludge=""           # yes/no. plot enlarged beachballs to avoid psmeca bug
+flag_make_cpt="yes"     # yes/no. compute CPT files
+region="stb"            # utu, ak, wes, stb
+size_lune_bb=0.22
+
+#-----------------------------------------------------------
+# prepare to read the data
+#-----------------------------------------------------------
+evid=$1
+model=$2
+depth=$3
+datadir=$4
+
+# check input
+if [ -z $evid ] || [ -z $depth ] || [ -z $model ] ; then
+    printf "usage: $0 evid model depth [datadir]\n"
+    printf "eg. $0 20100516163454464 utuhalf 5\n"
+    exit
+fi
+
+#data_vwgrid="/home/alvizuri/shared/data/gmt/vwgrid"
+data_vwgrid="/media/calvizur/storage/DATA/gmt/vwgrid"
+# if [ -n "$4" ] & [ -n "$5" ] & [ -n "$6" ] & [ -n "$7" ] ; then
+#     wP=`printf "P%02d" $4`
+#     wV=`printf "V%02d" $5`
+#     wR=`printf "R%02d" $6`
+#     wS=`printf "S%02d" $7`
+#     job_name="_${wP}_${wV}_${wR}_${wS}"
+# 
+#     # if inputs 4-7 present then use them as label for inversion type
+#     #filename_add="P$4_V$5_R$6_S$7_"
+#     #inputdir_add="_P$4_V$5_R$6_S$7"
+#     #filename_add="${wP}_${wV}_${wR}_${wS}_"
+#     #inputdir_add="_${wP}_${wV}_${wR}_${wS}"
+#     #echo ${filename_add} ${inputdir_add}
+# 
+#     if [ "$4" == "1" ] || [ "$4" == "01" ] ; then
+#         inversion_type="p PV $5 PR $6 Surf $7"
+#     elif [ "$4" == "0" ] || [ "$4" == "00" ] ; then
+#         plot_misfit_fmp=""      # yes/no
+#         inversion_type="np PV $5 PR $6 Surf $7"
+#     else
+#         printf "$0: abort. expecting pol label 0 or 1, got: \"$4\"\n"
+#         exit 1
+#     fi
+#     printf "\n$0:*** WARNING: using directory for main event tests ***\n"
+#     printf "$0: using labels for inversion type: $inversion_type \n"
+#     datadir_fmt_top="dw_20151024_mainevent_tests"   # test for main event
+# fi
+# 
+# if [ -n "${8}" ] ; then
+#     st=`printf "%s" $8`  # source type
+#     job_name="${job_name}_${st}"
+# fi
+# 
+# if [ -n "${9}" ] ; then
+#     # [sort of security check] more labels than 8 is prob too much. abort
+#     printf "$0: abort. too many labels.\n"
+#     printf "... 9=$9 10=${10} .. "
+#     exit
+# fi
+# 
+# # clean input vars
+depth_label="$depth"
+depth=`printf "%03d" $depth`
+# 
+# # DATA DIRECTORY
+# if [ -z "${datadir_fmt_top}" ] ; then
+#     #datadir_fmt="${datadir_fmt_top}/$evid/fmt"
+#     #datadir_fmt="${datadir_fmt_top}/job_${evid}_P01_V01_R01_S00/$evid/fmt"
+#     #datadir_fmt="${datadir_fmt_top}/job_${evid}/$evid/fmt"
+#     #datadir_fmt_top="."
+#     #datadir_fmt_top="dw_20150604_results_fmtpaper_test_components_utuhalf_004"
+#     #datadir_fmt_top="dw"
+#     #datadir_fmt_top="dw_test"
+#     #datadir_fmt_top="testdir/job_20100516063454464"
+#     #datadir_fmt_top="dw_20150618_utuhalf_P00_V10_R01_S10_L_dt"
+#     datadir_fmt_top="inv20150618_utuhalf_P01_V10_R01_S10_L_dt"
+# fi
+# 
+# datadir_main="/home/alvizuri/shared/plutons/inversions/inv20151024_mainevent_tests"
+# datadir_main="/home/alvizuri/shared/plutons/inversions/inv20151028_utupaper_FMP_effects"
+# datadir_main="/home/alvizuri/shared/plutons/inversions/inv20150618_utuhalf_P00_V10_R01_S10_L_dt"
+# datadir_main="/home/alvizuri/shared/plutons/inversions/inv20150618_utuhalf_P01_V10_R01_S10_L_dt"
+# datadir_top="${datadir_main}"
+# datadir_job="job_${evid}${job_name}"
+# datadir_fmt="${datadir_top}/${datadir_job}/$evid/fmt"
+# 
+# printf "\n$0: using data directory:\n%s\n\n" ${datadir_fmt}
+# 
+# 
+# # size of best beachballs on the lune
+# size_lune_bb=0.32   # KLUDGE = 0.11. non kludge=0.32
+
+#-----------------------------------------------------------
+# fmt data
+# /home/alvizuri/projects/source_inversion_llnl/inv/OUTPUT_DIR/
+#       19910914190000000_wes_001_fmpdata.txt
+#       19910914190000000_wes_001_rand_mt_001000000.bin
+#       19910914190000000_wes_001_rand_bb_001000000.bin
+#       19910914190000000_wes_001_parameters_best_sol
+#       19910914190000000_wes_001.out
+#       19910914190000000_wes_001_fmt.ps
+#       19910914190000000_wes_001_beach_fmt.ps
+#       19910914190000000_wes_001_vw_prob.txt
+#       19910914190000000_wes_001_vw_misfit.txt
+#-----------------------------------------------------------
+# 19910914190000000 19910914190000000.CI.GSC..BH -116.808296   35.302799  0          wes 01  189.21   27.30 0.333741  35.21  60.63 216.1
+
+# INPUT
+# GMT data
+grid="/home/alvizuri/shared/data/gmt/srtm_23_17.grid"
+grad="/home/alvizuri/shared/data/gmt/srtm_23_17.grad"
+
+# TODO get datadir from command line
+#datadir="OUTPUT_DIR"
+#datadir="an20170831_fmtu_nucs_FINAL"
+#datadir="an20170831_fmtu_nucs_FINAL_COPY--USE"
+#datadir="an20170830-1742_LSM-semifinal"
+
+if [ -z "$datadir" ];then
+    datadir="OUTPUT_DIR"
+fi
+
+
+filetag="${datadir}/${evid}_${model}_${depth}"
+          data_stations="${filetag}_fmpdata.txt"
+        data_misfit_fmp="${filetag}_misfit_fmp"
+           data_vw_prob="${filetag}_vw_p_density.txt"
+           data_gd_prob="${filetag}_gd_p_density.txt"
+           data_cap_out="${filetag}.out"
+        data_bestsol_wf="${filetag}_best_sol_psmeca"
+                data_vP="${filetag}_vP.dat"
+               data_Pav="${filetag}_result.dat"
+          data_mesa_cdf="${filetag}_mesa_cdf.dat"
+          data_mesa_pdf="${filetag}_mesa_pdf.dat"
+          data_post_cdf="${filetag}_post_cdf.dat"
+          data_post_pdf="${filetag}_post_pdf.dat"
+if [ ! -z "$ikludge" ]; then
+    # 20170903033001760_MDJ2_001_misfit_wf_psmeca_fix_1_psmeca
+    data_misfit_wf="${filetag}_misfit_wf_psmeca_fix_${ikludge}_psmeca"
+#    data_misfit_wf="${filetag}_misfit_wf_psmeca_fix_${ikludge}_IEXP_psmeca"
+else
+    data_misfit_wf="${filetag}_misfit_wf_psmeca"
+fi
+
+# get a subset of all stations with nonzero weights
+# while read sta a a a a a a a a a w1 a a w2; 
+# do 
+#     if [ "$w1" -eq "1" ] || [ "$w2" -eq "1" ] ; then
+#         grep $sta $data_stations
+# 
+#     fi 
+# done < ${datadir}/${evid}_${model}_${depth}_tshift.out > ${datadir}/${evid}_${model}_${depth}_stations_used.txt
+# data_stations="${datadir}/${evid}_${model}_${depth}_stations_used.txt"
+
+# OUTPUT
+out="${filetag}_fmtu.ps"
+
+#-----------------------------------------------------------
+# check that data exists
+#-----------------------------------------------------------
+if [ -e "$data_stations" ] \
+    & [ -e "$data_cap_out" ] \
+    & [ -e "$data_misfit_fmp" ] \
+    & [ -e "$data_misfit_wf" ] \
+    & [ -e "$data_vw_prob" ] \
+    & [ -e "$data_vw_prob_best_sol" ] \
+    & [ -e "$data_psmeca_legend" ] 
+then
+    printf "$0: using input files:\n"
+    printf "%s\n%s\n%s\n%s\n%s\n%s\n" $data_misfit_wf $data_stations $data_misfit_fmp $data_vw_prob $data_cap_out $data_psmeca_legend $data_vw_prob_best_sol
+else
+    printf "$0: unable to open data. Check:\n"
+    printf "%s\n%s\n%s\n%s\n%s\n%s\n%s" $data_stations $data_cap_out $data_misfit_fmp $data_misfit_wf $data_vw_prob $data_vw_prob_best_sol $data_psmeca_legend
+    printf "$0: STOP\n"
+    #exit
+fi
+
+#-----------------------------------------------------------
+# extract data
+#-----------------------------------------------------------
+# vw minmax
+vw_highestp=`gmt gmtinfo -C ${data_vw_prob} | awk '{print $6}'`
+vw_highest=`grep $vw_highestp ${data_vw_prob} | awk '{print $1, $2}'`
+
+# get event data (from CAP out file)
+evlon=`awk 'NR==2 {printf "%9.4f", $6}' ${data_cap_out}`
+evlat=`awk 'NR==2 {printf "%9.4f", $4}' ${data_cap_out}`
+evdep=`awk 'NR==2 {printf "%.1f", $8}'  ${data_cap_out}`
+evmag=`awk 'NR==1 {printf "%.2f", $10}' ${data_cap_out}`
+printf "\n$0: event data: $data_cap_out: $evlon $evlat $evdep $evmag\n"
+
+label_evll="Lon $evlon, Lat $evlat"
+label_evdp="Dep ${evdep} km (inversion ${depth_label} km)"
+
+# mid bb size in scales should have same sizes
+#size_lune_bb=`awk 'NR==2 {printf "%f", 0.0021291531* ($13)^2 - 0.0211156419*($13) + 0.1369811941}' $data_psmeca_legend`
+
+# ONLY FOR MAIN EVENT (uturuncu FMT paper) -- inversion depth is from depth test
+# which we only did for the main event for this paper
+if [ ${evid} == "20100516063454464" ] ; then
+    label_evdp="Dep -0.6 km (inversion ${depth_label} km)"
+    printf "\n *** $0: WARNING: MAIN EVENT. using inversion depth from DEPTH TEST = -0.6km *** \n\n"
+fi
+
+# number of up/down polarities
+# 20100516085611 PLMK  -67.076897  -22.251499  1 utu06 09  263.55   52.47 0.625159   2.86   4.87  11.2
+n_up_polarities=`awk '{ if ($5=="1")  print $5 }' $data_stations | wc -l`
+n_dn_polarities=`awk '{ if ($5=="-1") print $5 }' $data_stations | wc -l`
+
+# get gamma delta for best solution
+#label_best_sol="`cat ${data_bestsol_wf} | awk '{printf \"Best source type @~g@~ %.0f\217, @~d@~ %.0f\217\", $1, $2}'`"
+#label_best_sol="`cat ${data_bestsol_wf} | awk '{printf "Best MT at (@~g@~, @~d@~) = (%.0f\217, %.0f\217)", $1, $2}'`"
+maxp_gd=`gmt gmtinfo -C ${data_gd_prob} | awk '{print $6}'`
+maxp_gd=`grep $maxp_gd ${data_gd_prob} | awk '{print $1, $2}'`
+label_best_sol="`awk '{printf "(@~g@~, @~d@~)@-VR@- = (%.0f\217, %.0f\217)", $1, $2}' ${data_bestsol_wf}`"
+label_best_sol_p="`echo $maxp_gd | awk '{printf "(@~g@~, @~d@~)@-p@- = (%.0f\217, %.0f\217)", $1, $2}'`"
+
+#                   BEGIN PLOTTING
+#   set gmt parameters
+#gmt gmtdefaults -D > .gmtdefaults4
+gmt gmtdefaults -D > gmt.conf
+#gmt gmtset PS_CHAR_ENCODING Standard+
+gmt gmtset PROJ_LENGTH_UNIT inch # cm / inch
+gmt gmtset PS_PAGE_ORIENTATION portrait
+gmt gmtset MAP_FRAME_TYPE plain
+gmt gmtset PS_MEDIA letter
+gmt gmtset FONT_LABEL 12 
+gmt gmtset FONT_ANNOT_PRIMARY 12
+#gmtset PLOT_DEGREE_FORMAT -D.xx
+gmt gmtset COLOR_FOREGROUND 75/75/75 # for polarity cpt
+gmt gmtset MAP_ANNOT_OBLIQUE 30
+gmt gmtset MAP_FRAME_PEN 0p
+
+# define symbols
+symbol_gd_best1="-Sc28p -W4.0p,black"
+symbol_gd_best2="-Sc28p -W2.0p,green"
+symbol_vw_best1="-Ss20p -W4.0p,black"
+symbol_vw_best2="-Ss20p -W2.0p,green"
+symbol_gd_best_leg1="-Sc12p -W4.0p,black"
+symbol_gd_best_leg2="-Sc12p -W1.5p,green"
+symbol_vw_best_leg1="-Ss12p -W4.0p,black"
+symbol_vw_best_leg2="-Ss12p -W1.5p,green"
+
+# title
+proj_labels="-R0/8.5/0/11 -JX8/11"
+fonts_text="-F+f14+jLM"
+fonts_panel_letters="-F+f14p,Helvetica-Bold+jLM"
+fonts_base="-F12+jLM"
+echo "-0.05 9.60 Event $evid, M $evmag" | gmt pstext $proj_labels $fonts_text    -K -N  > $out
+echo "-0.05 9.38 $label_evll"           | gmt pstext $proj_labels $fonts_text -O -K -N >> $out
+echo "-0.05 9.16 $label_evdp"           | gmt pstext $proj_labels $fonts_text -O -K -N >> $out
+echo " 0.20 8.94 $label_best_sol"       | gmt pstext $proj_labels $fonts_text -O -K -N >> $out
+echo " 2.30 8.94 $label_best_sol_p"     | gmt pstext $proj_labels $fonts_text -O -K -N >> $out
+echo " 0.64 8.97 @+max@+"               | gmt pstext $proj_labels $fonts_text -O -K -N >> $out
+echo " 2.74 8.97 @+max@+"               | gmt pstext $proj_labels $fonts_text -O -K -N >> $out
+
+# legend for best sol symbols
+echo "0.06 8.92"  | gmt psxy $proj_labels $symbol_gd_best_leg1 -N -O -K >>$out
+echo "0.06 8.92"  | gmt psxy $proj_labels $symbol_gd_best_leg2 -N -O -K >>$out
+echo "2.18 8.92"  | gmt psxy $proj_labels $symbol_vw_best_leg1 -N -O -K >>$out
+echo "2.18 8.92"  | gmt psxy $proj_labels $symbol_vw_best_leg2 -N -O -K >>$out
+
+# legend for polarities
+#if [ "$model" == "utuhalf" ] || [ "$model" == "bhutan0" ] ; then
+#if [ "$model" == "utuhalf" ]; then
+if [ "$plot_misfit_fmp" == "yes" ]; then
+    echo " 0.75 8.60 " | gmt psxy $proj_labels -Sc0.25c -G0/175/255   -W2.0p,0/0/0 -O -K -N >> $out
+    echo " 1.80 8.60 " | gmt psxy $proj_labels -Sc0.25c -G255/255/255 -W2.0p,0/0/0 -O -K -N >> $out
+    echo " 0.90 8.60 Up: $n_up_polarities"   | gmt pstext $proj_labels $fonts_base -O -K -N >> $out
+    echo " 1.95 8.60 Down: $n_dn_polarities" | gmt pstext $proj_labels $fonts_base -O -K -N >> $out
+
+    # title for psscale (the legend for psscale misaligns its title when using @~@)
+    label_psscale="polarity misfit n\(@~L@~\)"
+    echo "0 2.48 ${label_psscale}"  | gmt pstext $proj_labels $fonts_base+a90 -O -K -N >> $out
+else
+    label_pol_misfit="[No polarities]"
+    echo "0 4.5 ${label_pol_misfit}" | gmt pstext $proj_labels $fonts_base -O -K -N >> $out
+fi
+
+# legend for probability on VW plot
+label_vwplot="p(v,w)"
+echo "2.9 2.6 ${label_vwplot}" | gmt pstext $proj_labels $fonts_base -O -K -N >> $out
+
+# panel letters
+#     x   y font angle justify text
+echo "0.0 8.6 (a)" | gmt pstext $proj_labels $fonts_panel_letters -O -K -N >> $out
+echo "0.0 4.9 (b)" | gmt pstext $proj_labels $fonts_panel_letters -O -K -N >> $out
+echo "1.3 4.9 (c)" | gmt pstext $proj_labels $fonts_panel_letters -O -K -N >> $out
+echo "4.3 9.3 (d)" | gmt pstext $proj_labels $fonts_panel_letters -O -K -N >> $out
+echo "0.0 2.2 (e)" | gmt pstext $proj_labels $fonts_panel_letters -O -K -N >> $out
+echo "0.0 0.7 (f)" | gmt pstext $proj_labels $fonts_panel_letters -O -K -N >> $out
+echo "1.3 0.7 (g)" | gmt pstext $proj_labels $fonts_panel_letters -O -K -N >> $out
+
+# panel locations
+shifta="-Xa-0.02i -Ya5.5i"
+shiftb="-Xa0.25i -Ya2.5i"
+shiftc="-Xa1.6i -Ya1.3i"
+shiftd="-Xa3.5i -Ya-0.15i"
+shifte="-Xa0i -Ya1.1i"
+shiftf="-Xa0i -Ya-0.6i"
+shiftg="-Xa1.5i -Ya-0.8i"
+
+#       COLUMN 1
+# region
+if [ "$model" == "utuhalf" ] ; then
+    # PLUTONS
+    gmtregion="-R-67.75/-66.7/-22.7/-21.8 -Jm3.0"; ticks="-Ba0.5f0.1WSne"; bmscale="-L-67.6/-22.58/-22.3/10 -F+p1p,0/0/0+gwhite"
+    gmt grdview $grid -I$grad $gmtregion -O -K $shifta -Csrtm_utu_gray.cpt -Qi200 >> $out
+elif [ "$model" == "wes" ] ; then
+    # LLNL
+    gmtregion="-R-125.5/-104/32/48 -Jm0.135"; ticks="-Ba5f1WSne"; bmscale="-L-107.0/46.0/40/100 -F+p1p,0/0/0+gwhite"
+    gmt pscoast $gmtregion -O -V -K -Na -Df -W1 -S0/192/255 -A3000 $shifta >> $out
+elif [ "$model" == "scak" ] ; then
+    # ALASKA
+    grid="/home/alvizuri/shared/data/gmt/ETOPO1_Bed_g.grid"
+    grad="/home/alvizuri/shared/data/gmt/ETOPO1_Bed_g.grad"
+    gmtregion="-R-160/55/-134/67r -JS-150/90/7.0c"; ticks="-Ba10f5g10WSne/a5g5"; bmscale="-L-145/57/57/100 -F+p1p,0/0/0+gwhite"
+    gmt pscoast $gmtregion -O -V -K -Na -W100/100/100 -Di -S0/192/255 $shifta -A2000 >> $out
+elif [ "$model" == "stb" ] || [ "$model" == "stb2" ] || \
+     [ "$model" == "enp1" ] || [ "$model" == "enp2" ] || \
+     [ "$model" == "stb1qn" ] || [ "$model" == "enp1qn" ] || \
+     [ "$model" == "stb1qs" ] || [ "$model" == "enp1qs" ] || \
+     [ "$model" == "stb2qn" ] || [ "$model" == "enp2qn" ] || \
+     [ "$model" == "stb2qs" ] || [ "$model" == "enp2qs" ] || \
+     [ "$model" == "crust1l26p5" ] || [ "$model" == "crust1l27p5" ] || [ "$model" == "crust1l28p5" ] || \
+     [ "$model" == "himhs" ] || [ "$model" == "himhs2" ] || [ "$model" == "himcook" ] ; then
+    #gmtregion="-Rd83/89/26/31 -JM8c"; ticks="-Ba2f1WSen"; bmscale="-L84/26.7/26.7/50 -F+p1p,0/0/0+gwhite"
+    #gmtregion="-Rd83/89/26/31 -JM8c"; ticks="-Ba2f1WSen"; bmscale="-L84/26.7/26.7/50 -F+p1p,0/0/0+gwhite"
+    gmtregion="-Rd83/89/26/31 -JM8c"; ticks="-Ba2f1WSen"; bmscale="-L84/26.7/26.7/50 -F+p1p,0/0/0+gwhite"
+    #grdview $grid -I$grad $gmtregion -O -K $shifta -Ccpt_HIMNT.cpt -Qi200 >> $out # PLUTONS
+    gmt pscoast $gmtregion -O -V -K -Na -W100/100/100 -Di $shifta -G230/230/230 -S0/192/255 -A5000 >> $out
+        #-I1/2p/0/192/255 -I2/2p/0/192/255\
+        #-G230/230/230 -S0/192/255 \
+elif [ "$model" == "bhutan0" ] || [ "$model" == "bhutan0r1" ] ; then
+    #gmtregion="-Rd83/89/26/31 -JM8c"; ticks="-Ba2f1WSen"; bmscale="-L84/26.7/26.7/50 -F+p1p,0/0/0+gwhite"
+    #gmtregion="-Rd88.6/92.2/26/29 -JM8.1c"; ticks="-Ba2f1WSen"; bmscale="-L84/26.7/26.7/50 -F+p1p,0/0/0+gwhite"
+    gmtregion="-Rd88.6/92.5/26.5/30.3 -JM6.2c"; ticks="-Ba1f1WSen"; bmscale="-L84/26.7/26.7/50 -F+p1p,0/0/0+gwhite"
+    gmt pscoast $gmtregion -O -V -K -Na -W100/100/100 -Di -A3000 -G230/230/230 $shifta >> $out
+        #-I1/2p/0/192/255 -I2/2p/0/192/255 -G230/230/230 -S0/192/255 $shifta   >> $out
+elif [ "$model" == "baynk" ] || [ "$model" == "MDJ2" ] ; then
+    gmt gmtset PLOT_DEGREE_FORMAT D.xx
+    # north korea
+    grid="/media/calvizur/storage/DATA/etopo1/nk.grid"
+    grad="/media/calvizur/storage/DATA/etopo1/nk_ne0p5.grad"
+    #gmtregion="-R100/152/20/52 -JS125/40/7.0c"; ticks="-Ba10f5WSne"; bmscale="-Lf140/24/40/1000+ukm"
+    #gmtregion="-R105/20/155/55r -JS125/40/7.0c"; ticks="-Ba10f5WSne"; bmscale="-Lf133/26/40/1000+ukm"
+    gmtregion="-R108/20/155/55r -JS129/41/7.0c"; ticks="-Ba10f5g10WSne"; bmscale="-L139/25.5/40/1000+ukm"
+    #pscoast $gmtregion -O -V -K -Na -W100/100/100 -Di -S0/192/255 $shifta -A2000 >> $out
+    #colorwater="0/230/255"
+    colorwater="200/200/200"
+    colorshore="255/255/255"
+    colorcntry="100/100/100"
+    #pscoast $gmtregion -O -V -K -N1/0.1p -W1 -Dl $shifta -A1000 -G200/200/200 -S$colorwater >> $out
+    gmt pscoast $gmtregion -A500/0/1 -Na/0p,$colorcntry -Dl -W0p,$colorshore -S$colorwater $shifta -O -V -K >> $out
+    #grdview $grid -I$grad $gmtregion -O -K $shifta -Ccptnk -Qi200 >> $out
+elif [ "$model" == "chc1ls" ] || [ "$model" == "chc1ls" ] ; then 
+    # SWISS
+    path2grid="/media/calvizur/storage/DATA/swiss"
+    path2cpt="/media/calvizur/storage/DATA/gmt/cpt"
+    grid="$path2grid/swiss.grid"
+    grad="$path2grid/swiss.grad"
+    gmtregion="-R5.5/10.9/45.3/48.3 -Jm0.6"  ;  ticks="-Ba1f1g0WSne"
+    cpt="$path2cpt/cpt_bw_swiss3.cpt"
+    #pscoast $gmtregion -O -V -K -N1/0.1p -W1 -Di $shifta -A9000 -G200/200/200 -S0/230/255 >> $out
+    gmt grdview $grid -I$grad $gmtregion -O -K $shifta -C$cpt -Qi200 >> $out
+    gmt pscoast $gmtregion -N1/2p/100/0/0  -Di $shifta -A9000 -O -V -K >> $out
+elif [ "$model" == "premh2" ] ; then 
+    #path2grid="/media/calvizur/storage/DATA/swiss"
+    #path2cpt="/media/calvizur/storage/DATA/gmt/cpt"
+    #grid="$path2grid/swiss.grid"
+    #grad="$path2grid/swiss.grad"
+    #gmtregion="-R5.5/10.9/45.3/48.3 -Jm0.6"  ;  ticks="-Ba1f1g0WSne"
+    #cpt="$path2cpt/cpt_bw_swiss3.cpt"
+    #grdview $grid -I$grad $gmtregion -O -K $shifta -C$cpt -Qi200 >> $out
+    #pscoast $gmtregion -N1/2p/100/0/0  -Di $shifta -A9000 -O -V -K >> $out
+    grid="/home/alvizuri/shared/data/gmt/ETOPO1_Bed_g.grid"
+    grad="/home/alvizuri/shared/data/gmt/ETOPO1_Bed_g.grad"
+    gmtregion="-R-10/35/35/60r -JS9.50/46.5/8.0c"; ticks="-Ba20f20g0WSne/a10g0"; bmscale="-L-145/57/57/100 -F+p1p,0/0/0+gwhite"
+    gmt pscoast $gmtregion -O -V -K -Na -W100/100/100 -Di -S0/192/255 $shifta -A2000 >> $out
+elif [ "$model" == "crust1gl" ]; then
+    # GREENLAND
+    #area="-R-80/55/35/75r";  proj="-JS-52/70/8c"; frame="-Bxa10f5g30 -Bya5f1g10 -BWSwe"
+    #area="-R-70/50/43/75r";  proj="-JS-40/72.5/15c"; frame="-Ba10g10WSen"; bmscale="-L-20/55/71/500 -F+p1p,0/0/0+gwhite"
+    gmtregion="-R-80/55/35/75r -JS-52/70/7.5c"; ticks="-Ba10f10WSen"; bmscale="-L-132/81/71/500"
+    gmtregion="-R-70/50/43/75r -JS-40/72.5/7.8c"; ticks="-Ba10f10WSen/a5"; bmscale="-L-22/57/71/1000"
+    gray160="160/160/160"
+    #color_land="-G240/240/240"
+    #color_coast="-W0p,100/100/100 -Dl -A500"
+    color_land="-G$gray160"
+    color_coast="-W0p,$gray160 -Dl -A500"
+    gmt pscoast $gmtregion -O -V -K -Na $color_land $color_coast $shifta -A2000 >> $out
+elif [ "$model" == "crust1hi" ] ; then
+    colorwater="0/180/255"
+    colorshore="255/255/255"
+    colorcntry="100/100/100"
+    #gmtregion="-R-162/-149/15.5/23.5 -JS-155/20/8.0c"; ticks="-Ba20f20g0WSne/a10g0"; bmscale="-L-145/57/57/100 -F+p1p,0/0/0+gwhite"
+    gmtregion="-R-160.5/-154.1/18/23 -Jm1.3c"; ticks="-Ba2f5g0WSne/a2g0"; bmscale="-L-159.5/18.7/20/100 -F+p1p,0/0/0+gwhite"
+    gmt pscoast $gmtregion -O -V -K -Na -W100/100/100 -Di -A100 -G230/230/230 -S$colorwater $shifta >> $out
+else
+    echo "STOP. gmt region not available: \"$gmtregion\""
+    exit
+fi
+
+# plot map frame
+gmt psbasemap $gmtregion -O -K $shifta $ticks $bmscale >> $out
+
+# Use NSTA to figure out if plot or now (nsta threshold=10)
+nsta=`wc ${data_stations} | awk '{print $1}'`
+nsta_thr=40
+# station + polarity
+if [ "$nsta" -le "$nsta_thr" ]; then
+fonts_sta="-F+f6+jLM"
+    awk '{print $3, $4, $2}' $data_stations | sed 's/\./ /g' \
+        | awk '{print $1"."$2, $3"."$4, $7}' \
+        | gmt pstext $gmtregion -O -K $shifta $fonts_sta -D0/0.06  >> $out
+fi
+awk '{ if ($5==0) print $3, $4}' $data_stations \
+    | gmt psxy   $gmtregion -O -K $shifta -Ss0.25c -W1.0p,0/0/0 >> $out
+awk '{ if ($5>0) print $3, $4}' $data_stations \
+    | gmt psxy   $gmtregion -O -K $shifta -Sc0.25c -G0/175/255 -W1.5p,0/0/0 >> $out
+awk '{ if ($5<0) print $3, $4}' $data_stations \
+    | gmt psxy   $gmtregion -O -K $shifta -Sc0.25c -G255/255/255 -W1.5p,0/0/0 >> $out
+
+# epicenter
+echo "$evlon $evlat" | gmt psxy  $gmtregion -O -K $shifta -Sa0.5c -W0.5p -G255/0/0 >> $out
+#echo "$evlon $evlat" | psxy  $gmtregion -O -K $shifta -Sa0.4c -W2.5p,red   >> $out
+
+# mini lune plot with polarity misfits
+printf "$0: work on mini lune plot with polarity misfit\n"
+
+proj_lune_fmp="-JH0/0.85i"
+area_lune_fmp="-R-30/30/-90/90"
+proj_vw="-R-0.35/0.35/-1.178/1.178 -Jx1.5/1.5"
+
+# if polarity misfit not calculated (eg DC-only search), plot only square at center
+#if [ "$model" == "utuhalf" ]; then
+if [ "$plot_misfit_fmp" == "yes" ]; then
+
+    cpt_dots="dots.cpt"
+    # cpt for polarity misfit
+    gmt makecpt -I -Cseis -T-0.6/4.6/1 -N > $cpt_dots
+
+    gmt psbasemap $proj_lune_fmp $area_lune_fmp -Bg20/g20 -O -K $shiftb >> $out
+    awk '{print $1, $2, $3}' $data_misfit_fmp \
+        | gmt psxy -N -Sc4p -C$cpt_dots  $proj_lune_fmp $area_lune_fmp -O -K $shiftb >> $out
+    echo "0.0 0.0 " \
+        | gmt psxy -N -S+15p -W1p,150/150/150 $proj_lune_fmp $area_lune_fmp -O -K $shiftb >> $out
+
+    # plot scale for mini lune
+    gmt gmtset FONT_ANNOT_PRIMARY 10
+    gmt psscale -C$cpt_dots -Aa -D-0.5/0.6/1.2/0.1 -Ef0.5c -Bf1a1 -O -K $shiftb >> $out
+
+    # plot reference arcs on lune
+    (echo -30 35.2644 ; echo 30 54.7356)  | gmt psxy -N -W1p,5/5/5 $proj_lune_fmp $area_lune_fmp -O -K $shiftb >>$out
+    (echo -30 -54.7356; echo 30 -35.2644) | gmt psxy -N -W1p,5/5/5 $proj_lune_fmp $area_lune_fmp -O -K $shiftb >>$out
+fi
+
+# color palette
+misfit_min=`gmt gmtinfo -C $data_misfit_wf | awk '{printf "%e",$5}'`
+misfit_max=`gmt gmtinfo -C $data_misfit_wf | awk '{printf "%e",$6}'`
+#misfit_min=50; misfit_max=80       # manually set VR bounds
+misfit_del=`echo $misfit_min $misfit_max | awk '{printf "%5.2e",($2-$1)/100}'`
+misfit_del_c=`echo $misfit_min $misfit_max | awk '{printf "%5.2e",($2-$1)/5}'`
+printf "$0: min/misfit_del/max: $misfit_min / $misfit_del / $misfit_max\n"
+
+prob_min=`gmt gmtinfo -C $data_gd_prob | awk '{printf "%e",$5}'`
+prob_max=`gmt gmtinfo -C $data_gd_prob | awk '{printf "%e",$6}'`
+   prob_del=`echo $prob_min $prob_max | awk '{printf "%5.2e",($2-$1)/100}'`
+ prob_del_c=`echo $prob_min $prob_max | awk '{printf "%5.2e",($2-$1)/5}'`
+prob_legend=`echo $prob_min $prob_max | awk '{printf "%5.0e",($2-$1)/3}'`
+echo "##################################### prob minmax $prob_min $prob_max "
+
+cpt_misfit="misfit.cpt"
+cpt_misfit_c="misfit_c.cpt"
+cpt_probs="probs.cpt"
+cpt_probs_c="probs_c.cpt"
+# cool *, polar, jet,  panoply, polar, seis, sealand
+if [ "$flag_make_cpt" == "yes" ] ; then
+    if [ $misfit_min == $misfit_max ] ; then
+        gmt makecpt -Cpanoply -D -I > $cpt_misfit
+        gmt makecpt -Cpanoply -D -I > $cpt_misfit_c
+        gmt makecpt -Cpolar -D -I > $cpt_probs
+    else
+        gmt makecpt -Cpanoply -D -I -T${misfit_min}/${misfit_max}/${misfit_del} > $cpt_misfit
+        gmt makecpt -Cpanoply -D -I -T${misfit_min}/${misfit_max}/${misfit_del_c} > $cpt_misfit_c
+
+        # p density
+        #makecpt -Cjet -D  -T0/117.5/0.1 > $cpt_probs   # ocean, red2green, polar, wysiwyg, jet, hot
+        #makecpt -Cjet -D  -T0/7.5/10 > $cpt_probs_c     # alaska data
+        #makecpt -C/media/calvizur/storage/DATA/gmt/cpt/magma.cpt -D -I -T${prob_min}/${prob_max}/${prob_del} > $cpt_probs   # ocean, red2green, polar, wysiwyg, jet, hot
+        #makecpt -C/media/calvizur/storage/DATA/gmt/cpt/magma.cpt -D -I -T${prob_min}/${prob_max}/${prob_del_c} > $cpt_probs_c
+        #makecpt -Cjet -D -T${prob_min}/${prob_max}/${prob_del} > $cpt_probs   # ocean, red2green, polar, wysiwyg, jet, hot
+        #makecpt -Cjet -D -T${prob_min}/${prob_max}/${prob_del_c} > $cpt_probs_c
+        gmt makecpt -Chot -I -D -T${prob_min}/${prob_max}/${prob_del} > $cpt_probs   # show structure: BrownBlue12, haxby*, srtBlues08, blue, viridis
+        gmt makecpt -Chot -I -D -T${prob_min}/${prob_max}/${prob_del_c} > $cpt_probs_c
+    fi
+else
+    printf "\n*** WARNING using fixed color paletter for VR ***\n\n"
+fi
+
+# plot beachball with lowest misfit/highest VR
+printf "$0: plotting solution with lowest misfit\n"
+
+size_best_bb=1.67i      # 2.78i Ratio: 1.1120
+proj_size_best_bb=1.5   # 2.5
+proj_best_sol="-JPa${proj_size_best_bb}i -R0/360/0/1"
+awk '{print "0 1e-10", $3, $4, $5, $6, $7, $8, $9, "23"}' ${data_bestsol_wf} \
+    | gmt psmeca $proj_best_sol $shiftg -Sm${size_best_bb} -N -W1.0p,0/0/0 -Z$cpt_misfit -L -O -K >> $out
+
+# plot stations without polarity
+awk '{if($5==0) print $8, $10}' $data_stations  \
+    | gmt psxy $proj_best_sol $shiftg -Ss0.1i -N -W1p,black -Ggray -O -K >> $out
+# plot stations + polarities on the focal sphere
+awk '{if($5>0) print $8, $10}' $data_stations  \
+    | gmt psxy $proj_best_sol $shiftg -Sc0.12i -N -W1p -G0/175/255 -O -K >> $out
+awk '{if($5<0) print $8, $10}' $data_stations  \
+    | gmt psxy $proj_best_sol $shiftg -Sc0.12i -N -W1p -G255/255/255 -O -K >> $out
+
+echo "0 0" | gmt psxy $proj_best_sol $shiftg -S+0.2i -N -W1.5p,black -O -K >> $out
+
+# x, y, proj_best_sol_best_bb, angle, fontno, justify, text
+# print all stations regardless of pol info
+if [ "$nsta" -le "$nsta_thr" ]; then
+#fonts_sta_bb="-F+f7,Helvetica,-=0p,white+jCM"
+fonts_sta_bb="-F+f7,Helvetica+jCM"
+    awk '{print $8, $10, $2}' $data_stations | sed 's/\./ /g' \
+        | awk '{print $1"."$2, $3"."$4, $7}' \
+        | gmt pstext $proj_best_sol $shiftg $fonts_sta_bb -D0/0.12 -N -O -K  >> $out
+fi
+#awk  '{ print $8, $10, 7, 0, 1, "CM", $2 }' $data_stations  \
+#    | pstext $proj_best_sol $shiftg -D0/0.12 -S1.5p,white -N -O -K  >> $out
+
+#       COLUMN 2
+# plot best solutions on the lune
+printf "$0: plotting best solutions on the lune\n"
+
+proj_lune_wf="-JH0/3.4i"
+area_lune_wf="-R-30/30/-90/90"
+
+# plot background grid
+gmt psbasemap $proj_lune_wf $area_lune_wf -Bf10g10 -BWE -O -K $shiftd  >> $out
+# show 5 labels in scale (may vary depending on scale range)
+tick_major=`echo $misfit_min $misfit_max | awk '{printf "%.0f", ($2-$1)/5}'`
+gmt psscale -C$cpt_misfit -D2.8/9/1/0.2 -Al -Bf1a${tick_major}:"VR(@~L@~)": -E $shiftd -O -K >> $out
+
+# plot misfit
+#pscontour ${data_misfit_wf} $proj_lune_wf $area_lune_wf -O -K -C$cpt_misfit -I -N $shiftd >> $out
+gmt pscontour ${data_misfit_wf} $proj_lune_wf $area_lune_wf -O -K -C$cpt_misfit -I -N $shiftd -W+ -A- >> $out
+
+# plot reference arcs + points
+(echo -30 35.2644 ; echo 30 54.7356)  | gmt psxy -N -W2p,0/0/0/35 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out
+(echo -30 -54.7356; echo 30 -35.2644) | gmt psxy -N -W2p,0/0/0/35 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out
+(echo -30 35.2644 ; echo 30 -35.2644) | gmt psxy -N -W2p,0/0/0/35 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out
+echo   0.0000 -90.0000 | gmt psxy -N -Sp8p -W1p,0 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out 
+echo -30.0000 -54.7356 | gmt psxy -N -Sp8p -W1p,0 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out
+echo -30.0000 0.0000   | gmt psxy -N -Sp8p -W1p,0 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out
+echo -30.0000 35.2644  | gmt psxy -N -Sp8p -W1p,0 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out
+echo   0.0000 90.0000  | gmt psxy -N -Sp8p -W1p,0 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out
+echo 30.0000 54.7356   | gmt psxy -N -Sp8p -W1p,0 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out
+echo 30.0000 0.0000    | gmt psxy -N -Sp8p -W1p,0 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out
+echo 30.0000 -35.2644  | gmt psxy -N -Sp8p -W1p,0 $proj_lune_wf $area_lune_wf -O -K $shiftd >> $out
+fonts_lune="-F+f8,Helvetica-Bold+jLM"
+fonts_lune_type="-F+f10,Helvetica-Bold"
+echo " 30.0000  54.7356    (1,1,0)" | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune+jLM -D10p/0p  $shiftd -O -K -N >> $out
+echo " 30.0000   0.0000   (1,1,-2)" | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune+jLM -D10p/0p  $shiftd -O -K -N >> $out
+echo " 30.0000 -35.2644   (0,0,-1)" | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune+jLM -D10p/0p  $shiftd -O -K -N >> $out
+echo "-30.0000   0.0000  (2,-1,-1)" | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune+jRM -D-10p/0p $shiftd -O -K -N >> $out
+echo "-30.0000  35.2644    (1,0,0)" | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune+jRM -D-10p/0p $shiftd -O -K -N >> $out
+echo "-30.0000 -54.7356  (0,-1,-1)" | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune+jRM -D-10p/0p $shiftd -O -K -N >> $out
+echo "  0.0000 -90.0000 (-1,-1,-1)" | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune+jCT -D0p/-10p $shiftd -O -K -N >> $out
+echo "  0.0000  90.0000    (1,1,1)" | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune+jCB -D0p/10p  $shiftd -O -K -N >> $out
+echo "  0.0 -90.0 ISO "             | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune_type+jCB -D0p/-25p   $shiftd -O -K -N >> $out
+echo "  0.0  90.0 ISO "             | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune_type+jCB -D0p/20p    $shiftd -O -K -N >> $out
+echo "-30.0   0.0 CLVD"             | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune_type+jRM -D-10p/-10p $shiftd -O -K -N >> $out
+echo " 30.0   0.0 CLVD"             | gmt pstext $proj_lune_wf $area_lune_wf $fonts_lune_type+jLM -D10p/-10p  $shiftd -O -K -N >> $out
+
+# plot P(v,w)
+#psscale -C$cpt_probs -Aa -D1.7/0.5/1.0/0.1 -Ef0.5c -Bf1a1 -O -K $shiftc >> $out
+#psscale -C$cpt_probs -Aa -D1.6/0.5/1.0/0.1 -Ef0.5c -Bf0.1a0.5 -O -K $shiftc >> $out
+#psscale -C$cpt_probs -Aa -D1.6/0.5/1.0/0.1 -Ef0.5c -Bf10a50 -O -K $shiftc >> $out
+#psscale -C$cpt_probs -Aa -D1.6/0.5/1.0/0.1 -Ef0.5c -Bf10a${prob_legend} -O -K $shiftc >> $out
+gmt psscale -C$cpt_probs -Aa -D1.6/0.5/1.0/0.1 -Ef0.5c -Ba${prob_legend} -O -K $shiftc >> $out
+
+fonts_vwbox="-F+f10,Helvetica-Bold+jCM"
+echo  0.0 -1.1781 ISO  | gmt pstext $proj_vw $fonts_vwbox     -D0p/-10p -O -K -N $shiftc >> $out
+echo  0.0  1.1781 ISO  | gmt pstext $proj_vw $fonts_vwbox     -D0p/10p  -O -K -N $shiftc >> $out
+echo -0.333 0.0   CLVD | gmt pstext $proj_vw $fonts_vwbox+a90 -D-10p/0p -O -K -N $shiftc >> $out
+echo  0.333 0.0   CLVD | gmt pstext $proj_vw $fonts_vwbox+a90 -D10p/0p  -O -K -N $shiftc >> $out
+echo  0.0 -1.1781 | gmt psxy $proj_vw -Sy8p -W2p        -O -K -N $shiftc >> $out
+echo  0.0  1.1781 | gmt psxy $proj_vw -Sy8p -W2p        -O -K -N $shiftc >> $out
+echo -0.35 0.0    | gmt psxy $proj_vw -S-8p -W2p        -O -K -N $shiftc >> $out
+echo  0.35 0.0    | gmt psxy $proj_vw -S-8p -W2p        -O -K -N $shiftc >> $out
+
+#pscontour ${data_vw_prob} $proj_vw -Bg0 -C$cpt_probs $shiftc -I -N -O -K >> $out # paint
+#psxy ${data_vw_prob} $proj_vw -Sc0.23c -Bg0 -C$cpt_probs $shiftc -I -N -O -K >> $out # paint
+#psxy ${data_vw_prob} $proj_vw -Ss0.37c -Bg0 -C$cpt_probs $shiftc -I -N -O -K >> $out # paint
+## option 1
+#psxy ${data_vw_prob} $proj_vw -Ss0.32c -W+ -Bg0 -C$cpt_probs $shiftc -I -O -K >> $out           # blocky -- no interpolation
+
+# option 2 -- plot contour, then lam guides, then points. All on top of the frame and symbols (above)
+#pscontour ${data_vw_prob} $proj_vw -C$cpt_probs $shiftc -I -W+ -A- -N -O -K >> $out # NO contours
+#pscontour ${data_vw_prob} $proj_vw -Gn10 -Bg0 -C$cpt_probs_c $shiftc -W2 -N -O -K >> $out # contours + annotations
+#pscontour ${data_vw_prob} $proj_vw -Gn10 -Bg0 -C$cpt_probs_c $shiftc -W2 -N -O -K -A- >> $out # contours NO annotations
+gmt psxy ${data_vw_prob} $proj_vw -Ss0.4c -Bg0 -C$cpt_probs $shiftc -I -O -K >> $out # circles. with interpolation
+awk '{print $3, $4}' ${data_vwgrid}/sourcetype_arc_03.dat | gmt psxy $proj_vw -O -K $shiftc -W0.1p,0/0/0/35 >> $out
+awk '{print $3, $4}' ${data_vwgrid}/sourcetype_arc_04.dat | gmt psxy $proj_vw -O -K $shiftc -W0.1p,0/0/0/35 >> $out
+awk '{print $3, $4}' ${data_vwgrid}/sourcetype_arc_06.dat | gmt psxy $proj_vw -O -K $shiftc -W0.1p,0/0/0/35 >> $out
+#psxy ${data_vw_prob} $proj_vw -Sc0.15c -W0p,75/75/75 -Bg0 -C$cpt_probs $shiftc -I -O -K >> $out # circles. with interpolation
+
+# plus symbol for the DC
+echo  0 0         | gmt psxy $proj_vw -S+10p -W1p,white -O -K -N $shiftc >> $out
+
+#plot beachballs
+gmt psmeca ${data_misfit_wf} $proj_lune_wf $area_lune_wf -Sm${size_lune_bb}i -N -Z$cpt_misfit -W0.5p,100/100/100 -L -O -K $shiftd >> $out
+
+# show best solution on lune
+#psxy ${data_bestsol_wf} $area_lune_wf $proj_lune_wf -N -Ss23p -W2.0p,0/255/0 $shiftd -O -K >>$out
+gmt psxy ${data_bestsol_wf} $area_lune_wf $proj_lune_wf $symbol_gd_best1 $shiftd -O -K >>$out
+gmt psxy ${data_bestsol_wf} $area_lune_wf $proj_lune_wf $symbol_gd_best2 $shiftd -O -K >>$out
+# show most probable solution on vw
+#echo $vw_highest | psxy $proj_vw -N -Sc22p -W3p,black  $shiftc -O -K -V >> $out
+#echo $vw_highest | psxy $proj_vw -N -Sc22p -W1p,green  $shiftc -O -K -V >> $out
+echo $vw_highest | gmt psxy $proj_vw -N $symbol_vw_best1 $shiftc -O -K -V >> $out
+echo $vw_highest | gmt psxy $proj_vw -N $symbol_vw_best2 $shiftc -O -K -V >> $out
+
+fonts_xyplot1a="-F+f9,Helvetica-Bold,green+jLB+a90"
+fonts_xyplot1b="-F+f9,Helvetica-Bold,blue+jLB+a90"
+# fractional and confidence curves
+gmt psxy ${data_mesa_pdf} -R0/180/0/2.5 -Jx0.006/0.38 -BWS -Bxf30a90S -Byf1a2.5 $shifte -W1.1p,0/255/0 -O -K -N >> $out
+gmt psxy ${data_post_pdf} -R0/180/0/2.5 -Jx0.006/0.38 -Bxf0n -Byf0e             $shifte -W1.1p,0/0/255 -O -K -N >> $out
+#echo "-25 0.3 P'(@~w@~)" | gmt pstext -R0/180/0/2 -Jx0.006/0.45 $shifte $fonts_xyplot1+a90 -G50/205/50 -O -K -N >> $out
+#echo "-25 1.0 V'(@~w@~)" | gmt pstext -R0/180/0/2 -Jx0.006/0.45 $shifte $fonts_xyplot1+a90 -G0/0/255   -O -K -N >> $out 
+echo "-25 0.3 P'(@~w@~)" | gmt pstext -R0/180/0/2 -Jx0.006/0.45 $shifte $fonts_xyplot1a -O -K -N >> $out
+echo "-25 1.0 V'(@~w@~)" | gmt pstext -R0/180/0/2 -Jx0.006/0.45 $shifte $fonts_xyplot1b -O -K -N >> $out 
+
+# x y font angle justify text
+fonts_xyplot2="-F+f12,Helvetica+jLB"
+gmt psxy ${data_vP} -R-0.0/1.0/-0.0/1.0 -JX1.1 -Bf0.1a1/f0.1a1WS $shiftf -W1.1p,255/0/0 -O -K -N -G150/150/150 >> $out
+printf "0 0\n1 1" | gmt psxy -R0/1/0/1 -JX1.10 $shiftf -W0.5p,0/0/0,- -O -K -N >> $out
+echo "-25 0.4 \303"   | gmt pstext -R0/180/0/1 -Jx0.006/0.9 $shiftf $fonts_xyplot2+a90 -G0/0/0 -O -K -N >> $out 
+echo "-25 0.6 (\126)" | gmt pstext -R0/180/0/1 -Jx0.006/0.9 $shiftf $fonts_xyplot2+a90 -G0/0/0 -O -K -N >> $out 
+echo "80 -0.3 V"      | gmt pstext -R0/180/0/1 -Jx0.006/0.9 $shiftf $fonts_xyplot2     -G0/0/0 -O -K -N >> $out 
+# average Pav
+Pav=`awk '{printf "%.2f", $1}' $data_Pav`
+#fonts_xyplot3="-F+f12,Helvetica+jLB"
+fonts_xyplot3="-F+f12,Helvetica+jLB -PS_CHAR_ENCODING=Standard+"
+#echo "65.0 0.1 12 0 12 LB ~@AV~@" | pstext -R0/180/0/1 -Jx0.006/0.9 $shiftf -G0/0/0 -K -N -O >> $out 
+echo "70.0 0.14 ~\303~"        | gmt pstext -R0/180/0/1 -Jx0.006/0.9 $fonts_xyplot3 $shiftf -G0/0/0 -O -K -N >> $out 
+echo "90.0 0.10 @-AV@- $Pav"   | gmt pstext -R0/180/0/1 -Jx0.006/0.9 $fonts_xyplot3 $shiftf -G0/0/0 -O -K -N >> $out 
+gmt psbasemap -R0/1/0/1 -JX1.10 -Bxf0N -Byf0E $shiftf -O >> $out
+
+#ps2eps ${out}
+gmt psconvert -Tf -A $out
+#ps2raster -Te -A $out
+printf "$0: done. output file: $out\n"
+
