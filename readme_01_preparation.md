@@ -1,7 +1,7 @@
 # FMTU: full moment tensor and uncertainty estimation using seismic waveforms
 
 ## Earthquake waveform data 
-The waveform data should be prepared using the python utility ``pysep``, which will fetch the waveforms from repositories, perform various tests and prepare the data for analysis, including correcting for instrument response, rotating to source-receiver coordinate system, and preparing auxiliary files used in the moment tensor estimation.
+The waveform data should be prepared using the python utility ``pysep/sweep``, which will fetch the waveforms from repositories, perform various tests and prepare the data for analysis, including correcting for instrument response, rotating to source-receiver coordinate system, and preparing auxiliary files used in the moment tensor estimation.
 
 All waveforms will be saved in an event directory named after the origin time (e.g. ``20100516063454464``).
 The waveforms should be in units of velocity in cm/s or displacement in cm, and in SAC format.
