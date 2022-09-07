@@ -206,7 +206,7 @@ $only_pol = 0;
   #      #
   ## 2022-05-03 TEST AGAIN GMT 6.3. want: <anything/negative>
   $ampscale_body = "1/-1";
-  $ampscale_surf = "1/-1";
+  $ampscale_surf = "3/-1";
 
   print "pssac norm BODY -M<size/alpha>: $ampscale_body \n";
   print "pssac norm SURF -M<size/alpha>: $ampscale_surf \n";
@@ -431,8 +431,8 @@ $only_pol = 0;
   #$plt1s = "| pssac2 -JX${widths}i/${height}i -L${spis} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_surf/0/$nn -X${xoffset}i -Ent-2 -M$ampsurf_flag -O -K -P >> $outps";
   #$plt1b = "| pssac -JX${widthb}i/${height}i -S${spib} -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
   #$plt1s = "| pssac -JX${widths}i/${height}i -S${spis} -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i           -O -K -P >> $outps";
-  $plt1b = "| gmt pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
-  $plt1s = "| gmt pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i           -O -K -P >> $outps";
+  #$plt1b = "| gmt pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
+  #$plt1s = "| gmt pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i           -O -K -P >> $outps";
   #$plt1s = "| pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i    -V -Vc -O -K -P >> $outps";
   #print "*** DEBUG plt1s $plt1s\n";
 
@@ -551,9 +551,9 @@ $only_pol = 0;
                 # NOTE the wiggles already are pre-aligned here
                 #printf PLT "%s %f %f 5/0/0/0  \n",$nam.$com1,$x,$nn-$i-2;   # data (black)
                 #printf PLT "%s %f %f 3/255/0/0\n",$nam.$com2,$x,$nn-$i-2;   # synthetic (red)
-                printf PLT "%s %f %f 1.0,black\n", $nam.$com1,$x-$aa[7*$j+5],$nn-$i-2;  # data (black)
-                #printf PLT "%s %f %f 0.5,red\n",   $nam.$com2,$x,$nn-$i-2;  # synthetic (red)              # 2022-05-04 ORIGINAL
-                printf PLT "%s %f %f 0.9,red\n",   $nam.$com2,$x-$aa[7*$j+5],$nn-$i-2;  # synthetic (red)   # 2022-05-04 UPDATE: Include `aa` shift in the synthetics. Why was this was not done originally (GMT 4.5.15-UAF)?
+                print STDERR "DEBUG $aa[0] index 7*$j+5 | tshift $aa[7*$j+5]\n";
+                printf PLT "%s %f %f 1.0,black\n", $nam.$com1,$x            ,$nn-$i-2;  # data (black).     # 2022-09-07 NOTE: ONLY SYN NEEDS SHIFT, NOT OBS!!!
+                printf PLT "%s %f %f 0.9,red\n",   $nam.$com2,$x+$aa[7*$j+5],$nn-$i-2;  # synthetic (red)   # 2022-05-04 UPDATE: Include `aa` shift in the synthetics. Why was this was not done originally (GMT 4.5.15-UAF)?
                 #printf STDERR "%s OBS %f %f 0.8,black\n", $nam.$com1,$x,$nn-$i-2;  # data (black)
                 #printf STDERR "%s SYN %f %f 0.5,red\n",   $nam.$com2,$x,$nn-$i-2;  # synthetic (red)
                 #printf stderr "ind 7*$j+2 aa $aa[7*$j+2] $x0[$j]\n";
