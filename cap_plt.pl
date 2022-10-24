@@ -82,9 +82,9 @@ $only_pol = 0;
 #  ($tt, $inc) = (2*$tmax_body + 3*$tmax_surf + 2*$seps+2*$sepb, 1);
 #  ($tt, $inc) = ($tmax_body + $tmax_surf + $sepb, 4) if $num_com == 2;
 
-  ($twin_body, $inc) = (2*$tmax_body + 2*$sepb, 1);
+  ($twin_body, $inc) = (2*$tmax_body + 2*$sepb, 1);  
   ($twin_surf, $inc) = (3*$tmax_surf + 2*$seps, 1);  # 2021-04-02 width for surf windows. stretches wiggles, time axis.
-  print STDERR "*** DEBUG twin_surf $twin_surf inc $inc\n";
+  print STDERR "*** DEBUG twin_body $twin_body, twin_surf $twin_surf inc $inc\n";
   $tt = $twin_body + $twin_surf;
 
   ($tt, $inc) = ($tmax_body + $tmax_surf + $sepb, 4) if $num_com == 2;
@@ -97,10 +97,11 @@ $only_pol = 0;
   print "\n*** DEBUG x0 @x0 *** \n";
 
   $pwidth_in = $width +1.5 ;  # width of paper    # orig 8.5
-  print "\n$nrow rows to plot";
-  print "\npaper is $pwidth_in inches wide and $pheight_in inches tall";
+  print "\n$nrow rows to plot\n";
+  print "\npaper is $pwidth_in inches wide and $pheight_in inches tall\n";
   print STDERR ">>> gmtset BASEMAP_TYPE plain PAPER_MEDIA Custom_${pwidth_in}ix${pheight_in}i MEASURE_UNIT inch\n";
   system("gmt gmtset BASEMAP_TYPE plain PAPER_MEDIA Custom_${pwidth_in}ix${pheight_in}i MEASURE_UNIT inch");
+  print "DEBUG widthb $widthb\n";
 
   # horizontal offset (why is it needed?)
   #$xoffset="3.0";
@@ -205,8 +206,10 @@ $only_pol = 0;
   #      #$ampscale_surf = "1/1";   
   #      #
   ## 2022-05-03 TEST AGAIN GMT 6.3. want: <anything/negative>
-  $ampscale_body = "1/-1";
-  $ampscale_surf = "3/-1";
+  $ampscale_body = "0.5/-1";
+  $ampscale_surf = "1/-1";
+  $ampscale_body = "$ampbody_input/-1"; # 2022-10-07 test
+  $ampscale_surf = "$ampsurf_input/-1"; # 2022-10-07 test
 
   print "pssac norm BODY -M<size/alpha>: $ampscale_body \n";
   print "pssac norm SURF -M<size/alpha>: $ampscale_surf \n";
@@ -221,12 +224,13 @@ $only_pol = 0;
   #$plt1s = "| pssac2 -JX${widths}i/${height}i -L${spis} -l${tscale_x}/${tscale_y}/1/0.075/8 -R0/$twin_surf/0/$nn -X${xoffset}i -Ent-2 -M$ampsurf_flag -O -K -P >> $outps";
   #$plt1b = "| pssac -JX${widthb}i/${height}i -S${spib} -M$ampbody_flag -R0/$twin_body/0/$nn               -Y0.2i      -K -P -V >> $outps";
   #$plt1s = "| pssac -JX${widths}i/${height}i -S${spis} -M$ampsurf_flag -R0/$twin_surf/0/$nn -X${xoffset}i          -O -K -P -V >> $outps";
-  $plt1b = "| gmt pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i       -K -P >> $outps";
-  $plt1s = "| gmt pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i           -O -K -P >> $outps";
+  
+  $plt1b = "| gmt pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i     -K -P >> $outps";
+  $plt1s = "| gmt pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i         -O -K -P >> $outps";
 
   # (2) plot text labels
   $plt2_stn_info  = "| gmt pstext -JX -R -O -K -N -X-${xoffset}i >> $outps";
-  $plt2_wf_info_b = "| gmt pstext -JX${widthb}i/${height}i -R0/$twin_body/0/$nn -O -K -N >> $outps";
+  $plt2_wf_info_b = "| gmt pstext -JX${widthb}i/${height}i -R0/$twin_body/0/$nn               -O -K -N >> $outps";
   $plt2_wf_info_s = "| gmt pstext -JX${widths}i/${height}i -R0/$twin_surf/0/$nn -X${xoffset}i -O -K -N >> $outps";
 
   # (3) plot beachballs (solution, followed by possible local minima)
@@ -502,19 +506,23 @@ $only_pol = 0;
     @capout_splice = splice(@capout,0,$nn-2);
     foreach (@capout_splice) {   # go over each line in .out file
         @aa = split;
-	if (($aa[37]!=0 && $pol_wt != 0) || ($aa[2]!=0 || $aa[9]!=0 || $aa[16]!=0 || $aa[23]!=0 || $aa[30]!=0 || $keepBad!=0)){
+        if (($aa[37]!=0 && $pol_wt != 0) || ($aa[2]!=0 || $aa[9]!=0 || $aa[16]!=0 || $aa[23]!=0 || $aa[30]!=0 || $keepBad!=0)){
         $nam = "${mdl}_$aa[0].";
         $x=0;
         for($j=0;$j<2;$j+=$inc) {
             $com1=8-2*$j; $com2=$com1+1;    # seismogram extensions (.0, .1, .2...)
             if ($aa[7*$j+2]>0) {
+                $dx=$aa[7*$j+5]/3.7636; # 0.55
+                printf "*** DEBUG j $j, 7j+5=7*$j+5, aa $aa[7*$j+5], x $x, dx $dx, obs: $nam.$com1 syn: $nam.$com2\n"; 
 # <saclist> contains SAC files + plotting parameters. See above for formatting instructions.
 #           Each record has 1, 3 or 4 items:  <filename> [<X> <Y> [<pen>]].
-                #printf "(j=$j) x=$x\t"; # debug
                 #printf PLT "%s %f %f 5/0/0/0\n",  $nam.$com1,$x+0,$nn-$i-2;     # data (black)
                 #printf PLT "%s %f %f 3/255/0/0\n",$nam.$com2,$x+0,$nn-$i-2;   # synthetic (red)
-                printf PLT "%s %f %f 0.8,black\n", $nam.$com1,$x+0,$nn-$i-2;   # data (black)
-                printf PLT "%s %f %f 0.8,red\n",   $nam.$com2,$x+0,$nn-$i-2;   # synthetic (red)
+                printf PLT "%s %f %f 0.8,black\n", $nam.$com1,$x+0.0        ,$nn-$i-2;   # data (black)
+                printf PLT "%s %f %f 0.8,red\n",   $nam.$com2,$x+0.0        ,$nn-$i-2;   # synthetic (red)
+                #printf     "%s %f %f 0.8,black\n", $nam.$com1,$x+0.0        ,$nn-$i-2;   # data (black)
+                #printf     "%s %f %f 0.8,red\n",   $nam.$com2,$x+0.0        ,$nn-$i-2;   # synthetic (red)
+                #printf PLT "%s %f %f 0.8,red\n",   $nam.$com2,$x+$aa[7*$j+5],$nn-$i-2;   # synthetic (red)
             } elsif ($keepBad) {
                 printf PLT "%s %f %f 0.8,green\n",$nam.$com1,$x+0,$nn-$i-2;  # bad data (green)
                 printf PLT "%s %f %f 0.8,red\n",  $nam.$com2,$x+0,$nn-$i-2;  # synthetic (red)
