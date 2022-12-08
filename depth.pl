@@ -280,7 +280,7 @@ while (@event)
 	$xinc = 0.1;
 	$tmp = 1000000;	# temporary variable (start with very large misfit value to find the uncertainty)
 	$err_cent = 0.01; # to compute uncertainity ($err_cent*100 percent confidence interval)
-	open(PLT, "| psxy $J $R2 $xx -W1p,0/0/0,-"); # key command that sets the scale (J) and region (R)
+	open(PLT, "| gmt psxy $J $R2 $xx -W1p,0/0/0,-"); # key command that sets the scale (J) and region (R)
 	printf STDERR "---min_dep=%f max_dep=%f----\n", $dep[1],$dep[$ii-1];
 	for ($l=$dep[1]; $l<$dep[$ii-1]; $l+=$xinc)
 	{
@@ -301,12 +301,12 @@ while (@event)
 	close(PLT);
 	
 	# ==============Plot bars for uncertainty
-	open(PLT, "| psxy $J $R2 -K -O -W2p,0/0/0");
+	open(PLT, "| gmt psxy $J $R2 -K -O -W2p,0/0/0");
 	printf PLT "%f %f\n",$depth, $err_cent;
 	printf PLT "%f %f\n",$xcord2, $err_cent;
 	close(PLT);
 
-	open(PLT, "| psxy $J $R2 -K -O -W1p,0/0/0,-");
+	open(PLT, "| gmt psxy $J $R2 -K -O -W1p,0/0/0,-");
 	printf PLT "%f %f\n",$depth, $Ydepth;
 	printf PLT "%f %f\n",$depth, $err_cent;
 	close(PLT);
@@ -318,7 +318,7 @@ while (@event)
 	
 	# =============plot the log(err/min_err) with depth (perhaps don't need this)
 	$xy = "-K $B2 -P -O";
-	open(PLT, "| psxy $J $R2 $xy -Sc0.25c -Gred"); # key command that sets the scale (J) and region (R) - draws a circle
+	open(PLT, "| gmt psxy $J $R2 $xy -Sc0.25c -Gred"); # key command that sets the scale (J) and region (R) - draws a circle
 	for ($jj=1;$jj<$ii;$jj+=1)
 	{
 	    $l=$dep[$jj];
@@ -328,7 +328,7 @@ while (@event)
 	}
 	close(PLT);
 	$xy = "-K $B2 -O";
-	open(PLT, "| psxy $J $R2 $xy -Wthick,black"); # key command that sets the scale (J) and region (R) - drays a line
+	open(PLT, "| gmt psxy $J $R2 $xy -Wthick,black"); # key command that sets the scale (J) and region (R) - drays a line
 	for ($jj=1;$jj<$ii;$jj+=1)
 	{
 	    $l=$dep[$jj];
@@ -339,7 +339,7 @@ while (@event)
 	
 	#=================== plot the VR (variance reduction) with depth
 	$xy = "-K -O $B3";
-	open(PLT, "| psxy $J $R $xy -Sc0.25c -G150"); # key command that sets the scale (J) and region (R) - draws a circle
+	open(PLT, "| gmt psxy $J $R $xy -Sc0.25c -G150"); # key command that sets the scale (J) and region (R) - draws a circle
 	for ($jj=1;$jj<$ii;$jj+=1)
 	{
 	    $l=$dep[$jj];
@@ -347,7 +347,7 @@ while (@event)
 	    printf PLT "%f %f\n",$l,$aa;
 	}
 	close(PLT);
-	open(PLT, "| psxy $J $R $xy -Wthick,150"); # key command that sets the scale (J) and region (R)- drays a line
+	open(PLT, "| gmt psxy $J $R $xy -Wthick,150"); # key command that sets the scale (J) and region (R)- drays a line
 	for ($jj=1;$jj<$ii;$jj+=1)
 	{
 	    $l=$dep[$jj];
@@ -361,7 +361,7 @@ while (@event)
 	{
 	    for ($kk=0; $kk<=$#model; $kk++)
 	    {
-		open(PLT, "| psxy $J $R $xy -W2p,blue");
+		open(PLT, "| gmt psxy $J $R $xy -W2p,blue");
 		printf PLT "%f %f\n",$model[$kk], -10;
 		printf PLT "%f %f\n",$model[$kk], 0;
 		close(PLT);
@@ -385,21 +385,21 @@ while (@event)
 	    printf STDERR "*** WARNING Applying topo correction: $topocorr km ***\n";
 	}
 	# plot the catalog depth ($edep) as a RED inverted triangle
-	open(PLT, "| psxy $J $R $xy -Si0.5c -G255/0/0 -W.05c");
+	open(PLT, "| gmt psxy $J $R $xy -Si0.5c -G255/0/0 -W.05c");
 	printf PLT "%f %f\n", $edep + $topocorr, -7.5;
 	close(PLT);
 
 	# plot the best-fitting depth ($depth) from the CAP grid search as a WHITE inverted triangle
-	open(PLT, "| psxy $J $R $xy -Si0.5c -G255/255/255 -W.05c");
+	open(PLT, "| gmt psxy $J $R $xy -Si0.5c -G255/255/255 -W.05c");
 	printf PLT "%f %f\n",$depth, -7.5;
 	close(PLT);
 	
 	#=============== plot the beach balls
 	#  open(PLT, "| psmeca -JX -R -O -K -Sa0.3");   # original
-	open(PLT, "| psmeca $J $R2 -O -K -Sm${ballsize} -G100 -W0.5p,0 -P"); # plot Moment tensors
+	open(PLT, "| gmt psmeca $J $R2 -O -K -Sm${ballsize} -G100 -W0.5p,0 -P"); # plot Moment tensors
 	if ($onlydc==1)
 	{
-	    open(PLT, "| psmeca $J $R2 -O -K -Sd${ballsize} -G100 -W0.5p,0 -P"); # plot Moment tensors
+	    open(PLT, "| gmt psmeca $J $R2 -O -K -Sd${ballsize} -G100 -W0.5p,0 -P"); # plot Moment tensors
 	}
 	for ($l=1; $l<$ii; $l++)
 	{
@@ -421,11 +421,11 @@ while (@event)
 	# ==============plot event id, best depth, misfit value
 	if ($i < $#aa)
 	{
-	    open(PLT, "| pstext -JX $R -N -O -K");
+	    open(PLT, "| gmt pstext -JX $R -N -O -K");
 	} # when doing the depth test for multiple events (output for various depths should be precomputed for each event)
 	else
 	{
-	    open(PLT, "| pstext -JX $R -N -O -S2p,white -N");
+	    open(PLT, "| gmt pstext -JX $R -N -O -S2p,white ");
 	}
 	
 	# plot the title
