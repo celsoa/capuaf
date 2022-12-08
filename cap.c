@@ -116,7 +116,8 @@ int zerophase = 0;
 int main (int argc, char **argv) {
   int 	i,j,k,k1,l,m,nda,npt,plot,kc,nfm,useDisp,dof,tele,indx,gindx,dis[NSTA],tsurf[NSTA],search_type,norm;
   int	n1,n2,ns, mltp, nup, up[3], n_shft, nqP, nqS,isurf=0,ibody=0,istat=0,Nsurf=0,Nbody=0,Nstat=0;
-  int	win_len_Nsamp[2],n[NCP],max_shft[NCP],npts[NRC],stn_comp_CC[200][NCP];
+  //int	win_len_Nsamp[2],n[NCP],max_shft[NCP],npts[NRC],stn_comp_CC[200][NCP];
+  int	win_len_Nsamp[2],n[NCP],max_shft[NCP],npts[NRC],stn_comp_CC[NSTA][NCP];
   int	repeat;
   char	tmp[255],glib[128],dep[32],dst[16],eve[32],*c_pt;
   float	x,x1,x2,y,y1,amp,dt,rad[6],arad[4][3],fm_thr,tie,mtensor[3][3],rec2=0.,VR,evla,evlo,evdp;
@@ -1188,7 +1189,7 @@ if (plot==1) {
        k = NCP - 1 - j;
        // ------------------------------------------------------------
        //        on_off / station misfit % / kross-corr (what?) / t-shift / log(Aobs/Asyn) / Aobs / Asyn
-       //               4    5    6    7     8     9     10 
+       //            4      5                   6                   7           8               9     10 
        fprintf(f_out," %1d %6.2f %2d %5.2f %5.2f %8.2e %8.2e",
                obs->com[k].on_off,       // weight (on or off) 
                stn_comp_misfit[i][k],    // percentage of total misfit
@@ -1196,17 +1197,24 @@ if (plot==1) {
                stn_comp_shift[i][k],     // time-shift of the component (CHECK ?)
                stn_comp_log_amp[i][k],   // log amplitude ratio of data and syn
                max_amp_obs[i][k],        // maximum amplitude of observed
-               max_amp_syn[i][k]);       // maximum amplitude of synthetic
+               max_amp_syn[i][k]         // maximum amplitude of synthetic
+               );
        if (k<3) log_amp_thresh = 1.5;    // log(amplitude) threshold for surface waves
-       else log_amp_thresh = 2.5;        // log(amplitude) threshold for body waves
-       if (abs(log(max_amp_obs[i][k]/max_amp_syn[i][k])) > log_amp_thresh){
-	 fprintf(wt3,"%d\t",0);}
-       else{
-	 fprintf(wt3,"%d\t",obs->com[k].on_off);} 
+       else     log_amp_thresh = 2.5;    // log(amplitude) threshold for body waves
+       if (abs(log(max_amp_obs[i][k]/max_amp_syn[i][k])) > log_amp_thresh) {
+           fprintf(wt3,"%d\t",0);
+       }
+       else {
+           fprintf(wt3,"%d\t",obs->com[k].on_off);
+       }
    }
 
    // output timeshifts
    // Example output file (note filename): HOYA_wes_001_tshift.out
+   //   QE.HNB5..HH             189.2       129.1   60.6116    4.9492  10.0000   0.0000 -10.0000  10.0000  -4.7500 1 1   2.4500 1
+   //   QE.HNB1..HH             189.3       128.9   60.6146    4.9577  10.0000   0.0000 -10.0000  10.0000  -4.4000 1 1   2.6000 1
+   //   QE.HNA1..HH             189.4       129.0   60.6126    4.9556  10.0000   0.0000 -10.0000  10.0000  -4.4000 1 1   2.6000 1
+   //   QE.HNA0..HH             189.6       129.1   60.6106    4.9571  10.0000   0.0000 -10.0000  10.0000  -5.3500 1 1   2.2000 1
    //   sta.net.cmp.loc.cha     dist        azim    lat     lon         allow    static   t-min    t-max    ts-SV  w w   ts-SH  w
    //   HOYA.LL.TPH..LH         116.9       323.5   38.0700 -117.2200   3.0000   3.0000   0.0000   6.0000   2.8500 1 1   1.3500 1
    //   HOYA.LL.DAC..LH         148.4       224.7   36.2700 -117.5900   3.0000   2.1000  -0.9000   5.1000   1.5000 1 1   4.0000 1
