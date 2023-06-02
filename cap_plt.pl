@@ -226,7 +226,8 @@ $only_pol = 0;
   #$plt1s = "| pssac -JX${widths}i/${height}i -S${spis} -M$ampsurf_flag -R0/$twin_surf/0/$nn -X${xoffset}i          -O -K -P -V >> $outps";
   
   $plt1b = "| gmt pssac -JX${widthb}i/${height}i -M$ampscale_body -R0/$twin_body/0/$nn               -Y0.2i     -K -P >> $outps";
-  $plt1s = "| gmt pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i         -O -K -P >> $outps";
+  #$plt1s = "| gmt pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i         -O -K -P >> $outps";
+  $plt1s = "| gmt pssac -JX${widths}i/${height}i -M$ampscale_surf -R0/$twin_surf/0/$nn -X${xoffset}i -T+s    -O -K -P >> $outps";
 
   # (2) plot text labels
   $plt2_stn_info  = "| gmt pstext -JX -R -O -K -N -X-${xoffset}i >> $outps";
@@ -520,8 +521,6 @@ $only_pol = 0;
                 #printf PLT "%s %f %f 3/255/0/0\n",$nam.$com2,$x+0,$nn-$i-2;   # synthetic (red)
                 printf PLT "%s %f %f 0.8,black\n", $nam.$com1,$x+0.0        ,$nn-$i-2;   # data (black)
                 printf PLT "%s %f %f 0.8,red\n",   $nam.$com2,$x+0.0        ,$nn-$i-2;   # synthetic (red)
-                #printf     "%s %f %f 0.8,black\n", $nam.$com1,$x+0.0        ,$nn-$i-2;   # data (black)
-                #printf     "%s %f %f 0.8,red\n",   $nam.$com2,$x+0.0        ,$nn-$i-2;   # synthetic (red)
                 #printf PLT "%s %f %f 0.8,red\n",   $nam.$com2,$x+$aa[7*$j+5],$nn-$i-2;   # synthetic (red)
             } elsif ($keepBad) {
                 printf PLT "%s %f %f 0.8,green\n",$nam.$com1,$x+0,$nn-$i-2;  # bad data (green)
@@ -562,6 +561,10 @@ $only_pol = 0;
                 #print STDERR "DEBUG $aa[0] index 7*$j+5 | tshift $aa[7*$j+5]\n";
                 printf PLT "%s %f %f 1.0,black\n", $nam.$com1,$x            ,$nn-$i-2;  # data (black).     # 2022-09-07 NOTE: ONLY SYN NEEDS SHIFT, NOT OBS!!!
                 printf PLT "%s %f %f 0.9,red\n",   $nam.$com2,$x+$aa[7*$j+5],$nn-$i-2;  # synthetic (red)   # 2022-05-04 UPDATE: Include `aa` shift in the synthetics. Why was this was not done originally (GMT 4.5.15-UAF)?
+                #printf PLT "%s %f %f 0.9,red\n",   $nam.$com2,$x            ,$nn-$i-2;  # synthetic (red)   
+                ## 2023-04-04 NOTE ISSUE: shift needed if wfile has NO tshifts. 
+                ##          if wfile has tshifts, then shift not needed BUT shifts do not align things properly either, need some extra offset (ISSUE) 
+                #printf STDERR "@@@@ %50s %7.2f %7.2f 0.9,red\n",   $nam.$com2,$x+$aa[7*$j+5]/12,$nn-$i-2; 
                 #printf STDERR "%s OBS %f %f 0.8,black\n", $nam.$com1,$x,$nn-$i-2;  # data (black)
                 #printf STDERR "%s SYN %f %f 0.5,red\n",   $nam.$com2,$x,$nn-$i-2;  # synthetic (red)
                 #printf stderr "ind 7*$j+2 aa $aa[7*$j+2] $x0[$j]\n";
