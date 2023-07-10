@@ -191,7 +191,7 @@ int main (int argc, char **argv) {
 
   SOLN	sol;
   SACHEAD hd[NRC];
-  FILE 	*f_out, *wt, *wt2, *wt3, *fid_srcfile, *f_tshift ;
+  FILE 	*f_out, *f_w1, *f_w2, *f_w3, *fid_srcfile, *f_tshift ;
   float tau0, riseTime, *src;
   char type[2] = {'B','P'}, proto[2] = {'B','U'};
   double f1_pnl, f2_pnl, f1_sw, f2_sw;
@@ -384,8 +384,8 @@ int main (int argc, char **argv) {
 
   // Compute reward factors
   // Reward for using longer time-windows and wider bandpass
-  pnl_reward = (x1*(f2_pnl-f1_pnl));
-  sw_reward = (y1*(f2_sw-f1_sw));
+  pnl_reward = (x1 * (f2_pnl - f1_pnl));
+  sw_reward  = (y1 * (f2_sw  - f1_sw));
   //pnl_reward = 1;
   //sw_reward = 1;
   fprintf(stderr, "\n--> Pnl reward: %f ; Sw reward: %f \n",pnl_reward, sw_reward);
@@ -863,7 +863,7 @@ int main (int argc, char **argv) {
         }
         spt->rec2 = x2;
         if (norm==1) x2 = sqrt(x2);
-        rec2 += spt->on_off*x2/(spt->npt * spt->rew);
+        rec2 += spt->on_off * x2 / (spt->npt * spt->rew);
 	
 
         // FILTER & CUTTING FOR GREENS FUNCTIONS
@@ -1154,10 +1154,9 @@ if (plot==1) {
                     max_amp_syn[i][j] = fabs(data_syn[l]);    // SYNTHETIC maximum amplitude
                 }
             }
-            stn_comp_log_amp[i][j] = log(max_amp_obs[i][j]
-					 /max_amp_syn[i][j]);  // log amplitude ratio of data and syn
-            hd->b -= (shft0[i][j]+dtP_pick[i]); // XXX
-            hd->a = hd->b-sol.shft[i][j]*dt;    // XXX
+            stn_comp_log_amp[i][j] = log(max_amp_obs[i][j] /max_amp_syn[i][j]);  // log amplitude ratio of data and syn
+            hd->b -= (shft0[i][j]+dtP_pick[i]); // XXX 2023-07-06 'b' header is beginning val of independent var
+            hd->a = hd->b-sol.shft[i][j]*dt;    // XXX 2023-07-06 'a' header is first arrival rel to ref time
             write_sac(tmp,hd[0],data_syn);      // write synthetics to file
             (*c_pt)++;
         }
@@ -1179,12 +1178,12 @@ if (plot==1) {
  f_tshift = fopen(tmp,"w");
 
  // Add time-shifts (and CC, etc - other station specific values) to *.out file
- wt3 = fopen(strcat(strcat(strcpy(tmp,eve),"/"),"weight_run.dat"),"w");
+ f_w3 = fopen(strcat(strcat(strcpy(tmp,eve),"/"),"weight_run.dat"),"w");
  for(obs=obs0,i=0;i<nda;i++,obs++) {
    //             stname /  distance / shift (what)
    //              1     2     3
    fprintf(f_out,"%-9s %5.1f/%-5.2f",obs->stn, obs->dist, dtP_pick[i]);
-   fprintf(wt3,"%s\t %d\t",obs->stn, dis[i]);
+   fprintf(f_w3,"%s\t %d\t",obs->stn, dis[i]);
    for(j=0;j<NCP;j++) {
        k = NCP - 1 - j;
        // ------------------------------------------------------------
@@ -1202,10 +1201,10 @@ if (plot==1) {
        if (k<3) log_amp_thresh = 1.5;    // log(amplitude) threshold for surface waves
        else     log_amp_thresh = 2.5;    // log(amplitude) threshold for body waves
        if (abs(log(max_amp_obs[i][k]/max_amp_syn[i][k])) > log_amp_thresh) {
-           fprintf(wt3,"%d\t",0);
+           fprintf(f_w3,"%d\t",0);
        }
        else {
-           fprintf(wt3,"%d\t",obs->com[k].on_off);
+           fprintf(f_w3,"%d\t",obs->com[k].on_off);
        }
    }
 
@@ -1233,7 +1232,7 @@ if (plot==1) {
            stn_comp_shift[i][0],                   // tshifts love SH
            obs->com[0].on_off);                    // weights SH
    // 
-   fprintf(wt3,"%3.1f\t %3.1f\t %3.1f\t %3.1f\t %3.1f\n", ppick[i], 0., 0., 0., 0.);
+   fprintf(f_w3,"%3.1f\t %3.1f\t %3.1f\t %3.1f\t %3.1f\n", ppick[i], 0., 0., 0., 0.);
 
    /* output observed polarity and predicted rad amplitude */
    if (skip_zero_weights==1){
@@ -1252,7 +1251,7 @@ if (plot==1) {
    }
  }
  fclose(f_out);
- fclose(wt3);
+ fclose(f_w3);
  fclose(f_tshift);
 
  // output best solution parameters
@@ -1268,15 +1267,45 @@ if (plot==1) {
          sol.meca.mag); 
  fclose(fid_best_sol);
 
- /**********ouput weight file **********/
- wt = fopen(strcat(strcat(strcpy(tmp,eve),"/"),"weight_capout.dat"),"w");
- wt2 = fopen(strcat(strcat(strcpy(tmp,eve),"/"),"weight_capin.dat"),"w");
+ // OUTPUT AUXILIARY WEIGHT FILES
+ // NB 2023-07-05: what's the point of the following two?
+ f_w1 = fopen(strcat(strcat(strcpy(tmp,eve),"/"),"weight_capout.dat"),"w");
+ f_w2 = fopen(strcat(strcat(strcpy(tmp,eve),"/"),"weight_capin.dat"),"w");
  for(obs=obs0,i=0;i<nda;i++,obs++){
-   fprintf(wt,"%s\t %d\t %d\t %d\t %d\t %d\t %d\t %3.1f\t %3.1f\t %3.1f\t %3.1f\t %3.1f\n",obs->stn, dis[i], obs->com[4].on_off, obs->com[3].on_off, obs->com[2].on_off, obs->com[1].on_off, obs->com[0].on_off, P_pick[i], P_win[i], S_pick[i], S_win[i], S_shft[i]);
-   fprintf(wt2,"%s\t %d\t %d\t %d\t %d\t %d\t %d\t %3.1f\t %3.1f\t %3.1f\t %3.1f\t %3.1f\n",obs->stn, dis[i], obs->com[4].on_off, obs->com[3].on_off, obs->com[2].on_off, obs->com[1].on_off, obs->com[0].on_off, P_pick[i]+0.2*win_len_Nsamp[0]*dt, P_win[i], S_pick[i]+0.3*win_len_Nsamp[1]*dt, S_win[i], S_shft[i]);
+     fprintf(f_w1, "%s\t %d\t %d\t %d\t %d\t %d\t %d\t %3.1f\t %3.1f\t %3.1f\t %3.1f\t %3.1f\n",
+             obs->stn, dis[i], 
+             obs->com[4].on_off, obs->com[3].on_off, 
+             obs->com[2].on_off, obs->com[1].on_off, obs->com[0].on_off, 
+             P_pick[i], P_win[i], 
+             S_pick[i], S_win[i], S_shft[i]);
+     fprintf(f_w2,"%s\t %d\t %d\t %d\t %d\t %d\t %d\t %3.1f\t %3.1f\t %3.1f\t %3.1f\t %3.1f\n",
+             obs->stn, dis[i], 
+             obs->com[4].on_off, obs->com[3].on_off, 
+             obs->com[2].on_off, obs->com[1].on_off, obs->com[0].on_off, 
+             P_pick[i]+0.2*win_len_Nsamp[0]*dt, 
+             P_win[i], 
+             S_pick[i]+0.3*win_len_Nsamp[1]*dt, 
+             S_win[i], S_shft[i]);
  }
- fclose(wt);
- fclose(wt2);
+ fclose(f_w1);
+ fclose(f_w2);
+
+ // 2023-07-05 output weight file with the best fitting tshifts (NOTE 13 col)
+ // Format: staname    dist    w1 w2 w3 w4 w5  tp tp_w ts ts_w ti_r [ti_s]
+ f_w1 = fopen(strcat(strcat(strcpy(tmp,eve),"/"),"weight_tshifts.dat"),"w");
+ for(obs=obs0,i=0;i<nda;i++,obs++){
+     fprintf(f_w1, "%35s %4d   %d %d   %d %d %d   %8.5f %5.1f %5.1f %5.0f   %6.2f %6.2f\n",
+             obs->stn, dis[i], 
+             obs->com[4].on_off, obs->com[3].on_off,                        // weights Body
+             obs->com[2].on_off, obs->com[1].on_off, obs->com[0].on_off,    // weights Surf
+             //P_pick[i], P_win[i], // window len Body. NOTE can shift trace plots
+             //S_pick[i], S_win[i], // window len Surf. NOTE can shift trace plots
+             0.0, 0.0,              // default
+             0.0, 0.0,              // default
+             stn_comp_shift[i][1],  // key: calculated tshifts Rayleigh
+             stn_comp_shift[i][0]); // key: calculated tshifts Transverse
+ }
+ fclose(f_w1);
 
  // 2022-05-02 centos7 core dumps: *** Error in `cap': munmap_chunk(): invalid pointer: 0x00000000026160cc ***
  // from my tests, the error comes from attempting to free fm_copy. Not clear why because there is a malloc for it. 
