@@ -34,9 +34,9 @@ void u2beta_vec(float *pArray_u, float *pArray_beta, int nsol)
     for (i = 0; i < nsol; i++) {
         //
         if(fabs(pArray_beta[i] - (PI / 2.0)) <= TOLBETA) {
-        fprintf(stderr,"WARNING. beta = %f. New beta = ", pArray_beta[i] ); 
+            //fprintf(stderr,"WARNING. beta = %f. New beta = ", pArray_beta[i] ); 
             pArray_beta[i] = (PI / 2.0);
-            fprintf(stderr,"%f\n", pArray_beta[i]); 
+            //fprintf(stderr,"%f\n", pArray_beta[i]); 
         }
     }
 
@@ -52,9 +52,9 @@ float beta2delta(float beta)
 
     // check numerical precision. if value =-0 set value=+0.
     if (fabs(delta) < TOLDELTA) {
-        fprintf(stdout, "WARNING delta = %f. New delta = ", delta);
+        //fprintf(stdout, "WARNING delta = %f. New delta = ", delta);
         delta = 0.0;
-        fprintf(stdout, "%f\n", delta);
+        //fprintf(stdout, "%f\n", delta);
     }
     return delta;
 }
