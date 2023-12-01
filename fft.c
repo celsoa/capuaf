@@ -137,7 +137,7 @@ The output is shifted by pi in phase so that the zero-lag is at the middle (nft/
 */
 void	cor(
 	    complex	*src,		/* In: source function */
-	    complex     *data,		/* In: data */
+	    complex *data,		/* In: data */
 	                                /* Out: cross-correlation */
 	    float	dt,		/* In: dt */
 	    int 	nft		/* In: number of pts */
@@ -162,20 +162,26 @@ void	cor(
    brought back in f[]. so the result will be good for the
    case that s[] is shorter than f[]
 */
+// In conclusion, the convolution in CAP and MTUQ is done with a unit sum (not
+// unit area) trapezoid, and using the wrong trap leads to amplitude and
+// magnitude differences.
+
 void    conv(float *s, int ns, float *f, int n) {
-  int   i,j,k,m;
-  float *g,*pt;
-  m = n+ns;
-  if ( (g=(float *) malloc(m*sizeof(float))) == NULL ) {
-     fprintf(stderr, "fail to malloc in conv()\n");
-     exit(-1);
-  }
-  for(i=0;i<ns;i++) g[i] = 0.;
-  for(pt=f,k=0;k<n;k++,i++,pt++){
-     g[i] = *pt;
-     for(*pt=0.,j=0;j<ns;j++) *pt += g[i-j]*s[j];
-  }
-  free(g);
+    int   i,j,k,m;
+    float *g,*pt;
+    m = n+ns;
+    if ( (g=(float *) malloc(m*sizeof(float))) == NULL ) {
+        fprintf(stderr, "fail to malloc in conv()\n");
+        exit(-1);
+    }
+    for(i=0;i<ns;i++) g[i] = 0.;
+    for(pt=f,k=0;k<n;k++,i++,pt++) {
+        g[i] = *pt;
+        for(*pt=0.,j=0;j<ns;j++) {
+            *pt += g[i-j] * s[j];
+        }
+    }
+    free(g);
 }
 void    conv_(float *s, int *ns, float *f, int *n) {
   conv(s, *ns, f, *n);

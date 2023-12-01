@@ -92,16 +92,16 @@ typedef struct {
 /* a portion of observed waveform and corresponding 3 components
 of Green's functions, cross-correlations, and L2 norms, etc */
 typedef struct {
-	int	npt;		/* number of points */
-	int	on_off;		/* on or off */
-	float	*rec;		/* data */
-	float	*syn[NRF];	/* Green's functions */
-	float	b;		/* beginning time of the data */
-/*	float	w; */
-	float	rec2;		/* sum rec*rec */
-	float	syn2[10];	/* c*sum syn[i]*syn[j], i=0..NRF-1, j=i..0, c=1 if i=j, 2 otherwise */
-	float	*crl[NRF];	/* sum rec*syn[i], i=0..NRF-1 */
-        float   rew;            /* reward factor for each component (based on window length and bandpass)*/
+	int	npt;		    // number of points
+	int	on_off;		    // on or off
+	float *rec;		    // data
+	float *syn[NRF];    // Green's functions 
+	float b;		    // beginning time of the data
+/*	float w; */
+	float rec2;		    // sum rec*rec
+	float syn2[10];	    // c*sum syn[i]*syn[j], i=0..NRF-1, j=i..0, c=1 if i=j, 2 otherwise
+	float *crl[NRF];	// sum rec*syn[i], i=0..NRF-1
+    float rew;          // reward factor for each component (based on window length and bandpass)
 } COMP;
 
 typedef struct {
