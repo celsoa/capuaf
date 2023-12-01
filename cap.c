@@ -863,7 +863,12 @@ int main (int argc, char **argv) {
         }
         spt->rec2 = x2;
         if (norm==1) x2 = sqrt(x2);
-        rec2 += spt->on_off * x2 / (spt->npt * spt->rew);
+        // 2023-07-23 *** DISABLED REWARD FACTOR ***
+        // WHY: TO HAVE A CONSISTENT MISFIT FUNCTION ACROSS EVENTS, DESPITE
+        // STATION COVERAGE.
+        // THIS IS ALSO DISABLED FOR MINEQUAKES PAPER (SUBMITTED TO SRL)
+        //rec2 += spt->on_off * x2 / (spt->npt * spt->rew);
+        rec2 += spt->on_off * x2 / spt->npt;
 	
 
         // FILTER & CUTTING FOR GREENS FUNCTIONS
